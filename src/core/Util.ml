@@ -10,9 +10,10 @@ type timestamp = float
 
 let start_ = Mtime_clock.now()
 
+(*doesn't perform conversion to µ-seconds*)
 let get_time_mon_us () : timestamp =
   let t = Mtime_clock.now() in
-  Mtime.Span.to_us (Mtime.span start_ t)
+  (Mtime.Span.to_float_ns (Mtime.span start_ t)) /. 1000.0
 
 let total_time_s () = get_time_mon_us () *. 1e-6
 
