@@ -71,3 +71,4 @@ target/streams/compile/internalDependencyClasspath/$global/streams/export
 target/streams/compile/managedClasspath/$global/streams/export
 target/streams/compile/unmanagedClasspath/$global/streams/export
 target/streams/compile/unmanagedJars/$global/streams/export
+test-cached
