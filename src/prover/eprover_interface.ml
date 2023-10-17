@@ -157,6 +157,10 @@ module Make(E : Env.S) : S with module Env = E = struct
                |> (fun syms -> ID.Set.diff syms already_defined)
                |> ID.Set.to_list
     in
+    let literals = List.map (fun cl -> C.lits cl) cl_set in
+    let literal_terms = List.map (fun lits -> Literals.Seq.terms lits) literals in
+    let _ = Monomorphisation.monomorphise_partial literal_terms in
+    (assert false);
     (* first printing type declarations, and only then the types *)
     CCList.fold_right (fun sym acc ->
         let ty = Ctx.find_signature_exn sym in

@@ -4,6 +4,7 @@ module Lit = Literal
 module Ty = Type
 module IT = InnerTerm 
 module Subst = Subst
+module Sc = Scoped
 
 module TermSet = T.Set
 module TypeSet = Ty.Set
@@ -11,8 +12,62 @@ module TypeSet = Ty.Set
 
 (* TODO make a neat little module with an ergonomic interface *)
 
-(* TODO gather all monomorphic instantiations of functions in a given set of terms*)
 
+let match_type mono_type ty =
+    let subst = Unif.Ty.matching ~pattern:(mono_type, 0) (ty, 0) in
+    subst
+
+
+let typed_sym term = T.Seq.typed_symbols term
+
+let all_typed_sym term_set = 
+    let all_sym = TermSet.fold (fun term iter -> Iter.union (typed_sym term) iter) term_set Iter.empty in
+    all_sym
+
+let derive_subst mono_term term =
+    let mono_ty_symbols = typed_sym mono_term in
+    let ty_symbols = typed_sym term in
+    (* TODO handle exceptions *)
+    let symbol_subst mono_symbols fun_symbol fun_ty =
+        let same_mono_symbols = Iter.filter_map (fun (sym, mono_type) -> if sym == fun_symbol then Some(mono_type) else None) mono_symbols in
+        Iter.fold (fun subst mono_type -> Subst.merge (match_type mono_type fun_ty) subst) Subst.empty same_mono_symbols
+    in
+    Iter.fold (fun subst (fun_sym, fun_type) -> Subst.merge (symbol_subst mono_ty_symbols fun_sym fun_type) subst) Subst.empty ty_symbols
+
+let new_terms mono_terms terms =
+    let new_terms_single mono_term_set term =
+        (* TODO make sure using Subst.FO isn't a mistake *)
+        TermSet.map (fun mono_term -> Subst.FO.apply Subst.Renaming.none (derive_subst mono_term term) (term, 0)) mono_term_set
+    in
+    TermSet.fold (fun term term_set -> TermSet.union term_set (new_terms_single mono_terms term)) TermSet.empty terms
+
+let is_monomorphic term = T.monomorphic term
+
+let split_terms term_set =
+    let mono_terms = TermSet.filter is_monomorphic term_set in
+    let non_mono_terms = TermSet.filter (fun t -> not (is_monomorphic t)) term_set in
+    mono_terms, non_mono_terms
+
+let mono_step mono_terms non_mono_terms =
+    let new_terms = new_terms mono_terms non_mono_terms in
+    let new_mono_terms, new_non_mono_terms = split_terms new_terms in
+    TermSet.union mono_terms new_mono_terms, TermSet.union non_mono_terms new_non_mono_terms
+
+let monomorphise_partial term_iter_list =
+    let term_set_list = List.map (fun iter -> Iter.to_set (module TermSet) iter) term_iter_list in
+    let term_set = List.fold_left (fun term_set new_set -> TermSet.union term_set new_set) TermSet.empty term_set_list in
+    let mono_terms, non_mono_terms = split_terms term_set in
+    let rec mono_step_limited counter mono_terms non_mono_terms =
+        if counter <= 0 then
+            mono_terms, non_mono_terms
+        else
+            let new_mono, new_non_mono = mono_step mono_terms non_mono_terms in
+            mono_step_limited (counter - 1) new_mono new_non_mono
+    in 
+    let mono_terms_res, _ = mono_step_limited 6 mono_terms non_mono_terms in
+    mono_terms_res
+
+(*
 (*axilliary functions, here so I remember the names*)
 
 (*given a type, returns true iff it is monomorphic and false otherwise*)
@@ -30,9 +85,10 @@ let mono_fun_sym term_set  =
     let mono_sym = Iter.filter (fun (_, ty) -> is_monomorphic_type ty) all_sym in
     mono_sym
     
-exception InvalidUnif
+(*exception InvalidUnif
 
 let rec unify_mono mono_type ty =
+    if not (is_monomorphic_type mono_type) then raise InvalidUnif;
     let combine sub_opt mono_ty ty =
         match (unify_mono mono_ty ty), sub_opt with
             | Some ty_unif, Some sub ->
@@ -55,15 +111,23 @@ let rec unify_mono mono_type ty =
      * before it is returned *)
     (* this allows us to avoid accidentally capturing DB variables accross different types of the term
      * whilst also returning a substitution that allows to capture variables quantified at the term level*)
-    | _ -> None
-    
-    
-let mono_sub_fun mono_fun_symbols fun_sym fun_ty =
-    (*keeps all monomorphic instations of functions that have fun_sym as symbol*)
-    let mono_template_candidate = Iter.filter_map (fun (fun_id, ty) -> if fun_id == fun_sym then Some ty else None) mono_fun_symbols in
-    (*unifies when possible the types of the non-monomorphic fun_ty and the monomorphic type in mono_template_candidate*)
-    ()
 
+    (*scope 0 for the term level*)
+    | mono_ty, Var var ->
+            Some(Subst.Ty.bind Subst.empty (Sc.make var 0) (Sc.make mono_ty 0))
+    | _ -> None*)
+
+let match_type mono_type ty =
+    let subst = Unif.Ty.matching ~pattern:(mono_type, 0) (ty, 0) in
+    subst
+    (*Subst.Ty.apply Subst.Renaming.none subst (ty, 0)*)
+
+let generate_subst mono_term term =
+    let mono_fun_sym = [] in
+    let fun_sym = [] in
+    (*for each fun_sym, find all corresponding mono_fun_sym and derive a substitution*)
+    (*combine all substitutions*)
+    ()
 
 
 (*given a term and a set of monomorphically instantiated function symbols, will return a set of substitutions
@@ -72,16 +136,6 @@ let mono_sub mono_fun_symbols term =
     let all_sym = T.Seq.typed_symbols term in
     let non_mono_sym = Iter.filter (fun (_, ty) -> not (is_monomorphic_type ty)) all_sym in ()
 
-    
-
-(* given a monomorphic function and a term, computes the term obtained by the substitutions induced
- * by the monomorphic function*)
-let new_term mono_fun term = term
-
-
-(* given two lists of type arguments the second one being monomorphic, returns a substition
- * (if it exists) unifying both lists*)
-let unify_mono type_args mono_types_args = Some([])
 
 (* given a term, returns the set of function symbols that occur in that term*)
 let function_symbols term = T.symbols term
@@ -117,4 +171,4 @@ let new_terms mono_terms poly_terms = TermSet.empty
 let separate_terms term_set =
     let monomorphic_terms = TermSet.filter is_monomorphic_term term_set in
     let polymorphic_terms = TermSet.filter (fun t -> not (is_monomorphic_term t)) term_set in
-    monomorphic_terms, polymorphic_terms
+    monomorphic_terms, polymorphic_terms*)
