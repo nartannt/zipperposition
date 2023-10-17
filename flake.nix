@@ -14,25 +14,26 @@
     flake-utils,
     nixpkgs
   }:
+
     flake-utils .lib.eachDefaultSystem (system:
     let 
       pkgs = import nixpkgs { inherit system; };
       ocamlPackages = pkgs.ocamlPackages;
       lib = nixpkgs.lib;
       ocaml = ocamlPackages.ocaml;
-      ocaml-syntax-shims = ocamlPackages.ocaml-syntax-shims;
-      ppx_let = pkgs.ppx_let;
     in {
 
+    zipperposition = ocamlPackages.buildDunePackage;
+    
     devShell = pkgs.mkShell {
       buildInputs = with pkgs; [
         ocaml
-        dune_3
-        ocamlformat
       ]
         ++ (with ocamlPackages; [
           merlin
           containers
+          dune_3
+          ocamlformat
           containers-data
           mtime
           alcotest
@@ -50,7 +51,7 @@
 
     packages = {
 
-      default = self.packages.${system}.msat;
+      #default = self.packages.${system}.msat;
 
       msat = ocamlPackages.buildDunePackage rec {
 
