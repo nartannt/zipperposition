@@ -152,15 +152,20 @@ module Make(E : Env.S) : S with module Env = E = struct
       ID.pp sym ID.pp_tstp sym (Type.TPTP.pp_ho ~depth:0) ty
 
   let output_all ?(already_defined=ID.Set.empty) ~out cl_set =
+
+    (*Monormophisation*)
+    let literals_arr = Array.of_list ((List.map (fun cl -> Iter.to_array (C.Seq.lits cl) )) cl_set) in
+    let mono_lits_list_arr = Monomorphisation.monomorphise_clauses literals_arr in
+
+    (* TODO convert the array of list of literals to a list of clauses*)
+    
+    let monomorphised_clause_set = () in
+
     let cl_iter = Iter.of_list cl_set in
     let syms = C.symbols ~include_types:true cl_iter
                |> (fun syms -> ID.Set.diff syms already_defined)
                |> ID.Set.to_list
     in
-    let literals = List.map (fun cl -> C.lits cl) cl_set in
-    let literal_terms = List.map (fun lits -> Literals.Seq.terms lits) literals in
-    let _ = Monomorphisation.monomorphise_partial literal_terms in
-    (assert false);
     (* first printing type declarations, and only then the types *)
     CCList.fold_right (fun sym acc ->
         let ty = Ctx.find_signature_exn sym in

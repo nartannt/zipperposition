@@ -34,11 +34,11 @@ let derive_subst mono_term term =
     in
     Iter.fold (fun subst (fun_sym, fun_type) -> Subst.merge (symbol_subst mono_ty_symbols fun_sym fun_type) subst) Subst.empty ty_symbols
 
+let new_terms_single mono_term_set term =
+    (* TODO make sure using Subst.FO isn't a mistake *)
+    TermSet.map (fun mono_term -> Subst.FO.apply Subst.Renaming.none (derive_subst mono_term term) (term, 0)) mono_term_set
+
 let new_terms mono_terms terms =
-    let new_terms_single mono_term_set term =
-        (* TODO make sure using Subst.FO isn't a mistake *)
-        TermSet.map (fun mono_term -> Subst.FO.apply Subst.Renaming.none (derive_subst mono_term term) (term, 0)) mono_term_set
-    in
     TermSet.fold (fun term term_set -> TermSet.union term_set (new_terms_single mono_terms term)) TermSet.empty terms
 
 let is_monomorphic term = T.monomorphic term
@@ -53,9 +53,8 @@ let mono_step mono_terms non_mono_terms =
     let new_mono_terms, new_non_mono_terms = split_terms new_terms in
     TermSet.union mono_terms new_mono_terms, TermSet.union non_mono_terms new_non_mono_terms
 
-let monomorphise_partial term_iter_list =
-    let term_set_list = List.map (fun iter -> Iter.to_set (module TermSet) iter) term_iter_list in
-    let term_set = List.fold_left (fun term_set new_set -> TermSet.union term_set new_set) TermSet.empty term_set_list in
+
+let monomorphised_terms term_set =
     let mono_terms, non_mono_terms = split_terms term_set in
     let rec mono_step_limited counter mono_terms non_mono_terms =
         if counter <= 0 then
@@ -64,8 +63,36 @@ let monomorphise_partial term_iter_list =
             let new_mono, new_non_mono = mono_step mono_terms non_mono_terms in
             mono_step_limited (counter - 1) new_mono new_non_mono
     in 
-    let mono_terms_res, _ = mono_step_limited 6 mono_terms non_mono_terms in
+    let mono_terms_res, _ = mono_step_limited 5 mono_terms non_mono_terms in
     mono_terms_res
+
+let derive_lits left_term_set right_term_set bool =
+    let derive_lits_single left_term right_term_set =
+        let right_term_list = TermSet.to_list right_term_set in
+        List.map (fun right_term -> Literal.mk_lit left_term right_term bool) right_term_list
+    in
+    TermSet.fold (fun left_term lit_list -> (derive_lits_single left_term right_term_set)@lit_list) left_term_set []
+    
+
+let monomorphise_lit lit mono_term_set =
+    let open Literal in
+    match lit with
+        | Equation (left_term, right_term, bool) ->
+            let left_term_set = new_terms_single mono_term_set left_term in
+            let right_term_set = new_terms_single mono_term_set right_term in
+            derive_lits left_term_set right_term_set bool
+        | _ -> [lit]
+
+let monomorphise_clauses literals_arr =
+    let terms_iter_arr = Array.map Literals.Seq.terms literals_arr in
+    let terms_iter = Iter.of_array terms_iter_arr in
+    let term_set = Iter.to_set (module TermSet) (Iter.flatten terms_iter) in
+    let mono_term_set = monomorphised_terms term_set in
+    let monomorphise_lits literals = Array.fold_left (fun lit_list lit -> (monomorphise_lit lit mono_term_set)@lit_list) [] literals in
+    Array.map monomorphise_lits literals_arr
+
+    
+
 
 (*
 (*axilliary functions, here so I remember the names*)
