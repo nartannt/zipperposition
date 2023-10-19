@@ -154,14 +154,18 @@ module Make(E : Env.S) : S with module Env = E = struct
   let output_all ?(already_defined=ID.Set.empty) ~out cl_set =
 
     (*Monormophisation*)
-    let literals_arr = Array.of_list ((List.map (fun cl -> Iter.to_array (C.Seq.lits cl) )) cl_set) in
-    let mono_lits_list_arr = Monomorphisation.monomorphise_clauses literals_arr in
+    let monomorphise_clause clause =
+        (* Have no idea what I'm doing here *)
+        let clause_proof_step = C.proof_step clause in
+        let clause_trail = C.trail clause in
+        let clause_penalty = C.penalty clause in
+        let new_lits = Monomorphisation.monomorphise_clause (Iter.to_array (C.Seq.lits clause)) in
+        (assert ((List.length new_lits) != 0));
+        C.create ~penalty:clause_penalty ~trail:clause_trail new_lits clause_proof_step
+    in
+    let mono_cl_set = List.map monomorphise_clause cl_set in
 
-    (* TODO convert the array of list of literals to a list of clauses*)
-    
-    let monomorphised_clause_set = () in
-
-    let cl_iter = Iter.of_list cl_set in
+    let cl_iter = Iter.of_list mono_cl_set in
     let syms = C.symbols ~include_types:true cl_iter
                |> (fun syms -> ID.Set.diff syms already_defined)
                |> ID.Set.to_list
@@ -173,7 +177,11 @@ module Make(E : Env.S) : S with module Env = E = struct
           output_symdecl ~out sym ty;
           acc
         ) else (
-          if Type.Seq.sub ty |> Iter.exists Type.is_tType then (
+          (* Very unsure of what this if statement checks for
+           * it seems that some monomorphic types satisfy the conditions*)
+          (*if Type.Seq.sub ty |> Iter.exists Type.is_tType then ( *)
+          if Type.expected_ty_vars ty > 0 then (
+            (assert (Type.expected_ty_vars ty > 0));
             raise PolymorphismDetected;
           );
           Iter.cons (sym, ty) acc
