@@ -152,20 +152,7 @@ module Make(E : Env.S) : S with module Env = E = struct
       ID.pp sym ID.pp_tstp sym (Type.TPTP.pp_ho ~depth:0) ty
 
   let output_all ?(already_defined=ID.Set.empty) ~out cl_set =
-
-    (*Monormophisation*)
-    let monomorphise_clause clause =
-        (* Have no idea what I'm doing here *)
-        let clause_proof_step = C.proof_step clause in
-        let clause_trail = C.trail clause in
-        let clause_penalty = C.penalty clause in
-        let new_lits = Monomorphisation.monomorphise_clause (Iter.to_array (C.Seq.lits clause)) in
-        (assert ((List.length new_lits) != 0));
-        C.create ~penalty:clause_penalty ~trail:clause_trail new_lits clause_proof_step
-    in
-    let mono_cl_set = List.map monomorphise_clause cl_set in
-
-    let cl_iter = Iter.of_list mono_cl_set in
+    let cl_iter = Iter.of_list cl_set in
     let syms = C.symbols ~include_types:true cl_iter
                |> (fun syms -> ID.Set.diff syms already_defined)
                |> ID.Set.to_list
@@ -177,11 +164,7 @@ module Make(E : Env.S) : S with module Env = E = struct
           output_symdecl ~out sym ty;
           acc
         ) else (
-          (* Very unsure of what this if statement checks for
-           * it seems that some monomorphic types satisfy the conditions*)
-          (*if Type.Seq.sub ty |> Iter.exists Type.is_tType then ( *)
-          if Type.expected_ty_vars ty > 0 then (
-            (assert (Type.expected_ty_vars ty > 0));
+          if Type.Seq.sub ty |> Iter.exists Type.is_tType then (
             raise PolymorphismDetected;
           );
           Iter.cons (sym, ty) acc
@@ -241,6 +224,24 @@ module Make(E : Env.S) : S with module Env = E = struct
 
 
   let try_e active_set passive_set =
+    (*monomorphisation occurs here*)
+    (*Monormophisation*)
+    let monomorphise_clause clause term_iter =
+        (* Have no idea what I'm doing here *)
+        let clause_proof_step = C.proof_step clause in
+        let clause_trail = C.trail clause in
+        let clause_penalty = C.penalty clause in
+        let new_lits = Monomorphisation.monomorphise_clause (Iter.to_array (C.Seq.lits clause)) term_iter in
+        C.create ~penalty:clause_penalty ~trail:clause_trail new_lits clause_proof_step
+    in
+
+    (*let term_iter = Iter.fold (fun iter cl -> Iter.union (E.C.Seq.terms cl) iter) Iter.empty (Iter.union active_set passive_set) in*)
+    let term_map = Iter.map (fun cl -> E.C.Seq.terms cl) (Iter.union active_set passive_set) in
+    let term_iter = Iter.flatten term_map in 
+    
+    let active_set = Iter.map (fun cl_set -> monomorphise_clause cl_set term_iter) active_set in
+    let passive_set = Iter.map (fun cl_set -> monomorphise_clause cl_set term_iter) passive_set in
+    
     let lambdas_too_deep c =
       let lambda_limit = 6 in
       C.Seq.terms c

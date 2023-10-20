@@ -85,13 +85,13 @@ let monomorphise_lit lit mono_term_set =
             derive_lits left_term_set_mono right_term_set_mono bool
         | _ -> [lit]
 
-let monomorphise_clause literals =
-    let terms_iter = Literals.Seq.terms literals in
+let monomorphise_clause literals terms_iter =
+    (*let terms_iter = Literals.Seq.terms literals in*)
     let term_set = Iter.to_set (module TermSet) terms_iter in
+    (Printf.printf "beginning with %i terms\n" (TermSet.cardinal term_set) );
     let mono_term_set = monomorphised_terms term_set in
+    (Printf.printf "ending up with %i terms\n" (TermSet.cardinal mono_term_set));
     let monomorphise_lits literals = Array.fold_left (fun lit_list lit -> (monomorphise_lit lit mono_term_set)@lit_list) [] literals in
     let res = monomorphise_lits literals in
-    (Printf.printf "beginning with %i literals\n" (Array.length literals));
-    (Printf.printf "ending up with %i literals\n" (List.length res));
     (Printf.printf "-------\n");
     res
