@@ -688,6 +688,7 @@ let comb_depth t =
   (* CCFormat.printf "c_depth(@[%a@])=@[%a@]@." T.pp t (CCOpt.pp CCInt.pp) res; *)
   res
 
+(* TODO understand how this works / is supposed to be used*)
 let monomorphic t = Iter.is_empty (Seq.ty_vars t)
 
 let max_var set = VarSet.to_iter set |> Seq.max_var

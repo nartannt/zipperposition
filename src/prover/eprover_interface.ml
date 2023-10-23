@@ -238,9 +238,10 @@ module Make(E : Env.S) : S with module Env = E = struct
     (*let term_iter = Iter.fold (fun iter cl -> Iter.union (E.C.Seq.terms cl) iter) Iter.empty (Iter.union active_set passive_set) in*)
     let term_map = Iter.map (fun cl -> E.C.Seq.terms cl) (Iter.union active_set passive_set) in
     let term_iter = Iter.flatten term_map in 
+    let mono_term_set = Monomorphisation.monomorphised_terms_set term_iter 10 in
     
-    let active_set = Iter.map (fun cl_set -> monomorphise_clause cl_set term_iter) active_set in
-    let passive_set = Iter.map (fun cl_set -> monomorphise_clause cl_set term_iter) passive_set in
+    let active_set = Iter.map (fun cl_set -> monomorphise_clause cl_set mono_term_set) active_set in
+    let passive_set = Iter.map (fun cl_set -> monomorphise_clause cl_set mono_term_set) passive_set in
     
     let lambdas_too_deep c =
       let lambda_limit = 6 in
