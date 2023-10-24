@@ -137,6 +137,7 @@ module Make(Ctx : Ctx.S) : S with module Ctx = Ctx = struct
   let create_a ~penalty ~trail lits proof =
     (* remove spurious "false" literals automatically *)
     let lits =
+      (* TODO running exists not necessary? should directly filter unless i'm mistaken*)
       if CCArray.exists lit_is_false_ lits
       then CCArray.filter (fun lit -> not (lit_is_false_ lit)) lits
       else lits
