@@ -8,7 +8,8 @@ module Sc = Scoped
 
 module TermSet = T.Set
 module TypeSet = Ty.Set
-(*make a map that takes a type variable and returns a set of types*)
+
+module ArgMap = Map.Make(ID)
 
 (* TODO make a neat little module with an ergonomic interface *)
 
@@ -28,25 +29,87 @@ let match_type ty mono_type =
     subst
 
 
+let is_instantiated ty =
+    Ty.expected_ty_vars ty == 0  && not (Type.Seq.sub ty |> Iter.exists Type.is_tType)
+
+
 (* TODO currrent implementation is incorrect because the symbols are taken from the terms as constants
  * therefore, the associated types are that of the constant and are never instantiated *)
 let typed_sym term = 
     (*get all applications*)
     let all_apps = Iter.filter T.is_app (T.Seq.subterms term) in
-    let res = Iter.sort_uniq (T.Seq.typed_symbols term) in
-    (*InnerTerm.show_type_arguments := true;
-    (Iter.iter (fun (s, t) -> (Printf.printf "\n symbol %s, type: %s " (ID.name s) (Ty.to_string t))) res);
-    InnerTerm.show_type_arguments := false;*)
-    res
+    (*get all the function symbols and types at the application level*)
+    let get_typed_sym app_term =
+        let hd_term = T.head_term_mono app_term in
+        (*let ty_args, f = T.as_fun app_term in*)
+        let ty_args, f = T.open_fun hd_term in
+        let ty = T.ty hd_term in
+        match T.as_const f with
+            | Some(id) when is_instantiated ty -> Some(ty_args, id, ty)
+            | _ -> None
+    in
+    let res = Iter.filter_map get_typed_sym all_apps in
+
+    (*let res = Iter.sort_uniq (T.Seq.typed_symbols term) in*)
+    InnerTerm.show_type_arguments := true;
+    (Iter.iter (fun (ty_args, s, t) -> (Printf.printf "\n symbol %s, type: %s, ty_args: %s" (ID.name s) (Ty.to_string t) (String.concat "; " (List.map Ty.to_string ty_args)) )) res);
+    InnerTerm.show_type_arguments := false;
+    Iter.map (fun (ty_args, s, _) -> s, ty_args) res
+
+let add_term_sym typed_sym_map term =
+    let typed_sym = typed_sym term in
+    let update_map map (sym, ty_args) =
+        let new_args = 
+            match ArgMap.find_opt sym map with
+                | Some (mono_ty_args, non_mono_ty_args) ->
+                    if List.for_all Ty.is_ground ty_args then
+                        let new_mono = Iter.cons ty_args mono_ty_args in
+                        new_mono, non_mono_ty_args
+                    else
+                        let new_non_mono = Iter.cons ty_args non_mono_ty_args in
+                        mono_ty_args, new_non_mono
+                | None ->
+                    if List.for_all Ty.is_ground ty_args then
+                        Iter.singleton ty_args, Iter.empty
+                    else
+                        Iter.empty, Iter.singleton ty_args
+        in
+        ArgMap.add sym new_args map 
+    in
+    Iter.fold update_map typed_sym_map typed_sym
+                
+let map_typed_sym map term_iter =
+    Iter.fold add_term_sym map term_iter
+
+let new_type_args_single non_mono_ty_list mono_ty_list =
+    let combine_types subst_iter mono_ty non_mono_ty =
+        let new_subst = match_type non_mono_ty mono_ty in
+        Iter.cons new_subst subst_iter 
+    in
+    List.fold_left2 combine_types Iter.empty mono_ty_list non_mono_ty_list
+
+let new_type_args mono_ty_args non_mono_ty_list =
+    Iter.flat_map (new_type_args_single non_mono_ty_list) mono_ty_args
+
+(* TODO make this more efficient by both generating the substitutions and the new types in the same pass*)
+(* TODO find more efficient data structures for this process, iter are easy to manipulate but sets would
+ * be more appropriate *)
+let mono_update_sym (mono_ty_args, non_mono_ty_args) =
+    Iter.flat_map (new_type_args mono_ty_args) non_mono_ty_args
+
+(*let mono_update_step map =
+    let new_subst = Map.fold (fun _ (mono_ty_args, non_mono_ty_args) subst_iter -> Iter.union*)
+
 
 let all_typed_sym term_set = 
     let all_sym = TermSet.fold (fun term iter -> Iter.union (typed_sym term) iter) term_set Iter.empty in
     all_sym
 
 let derive_subst mono_term term =
-    let mono_ty_symbols = typed_sym mono_term in
+    let mono_ty_symbols = Iter.empty in
     (*(Printf.printf "\n %i monomorphic typed symbols\n" (Iter.filter_count (fun _ -> true) mono_ty_symbols) );*)
-    let ty_symbols = typed_sym term in
+    (*let ty_symbols = typed_sym term in*)
+    let ty_symbols = Iter.empty in
     (*(Printf.printf "\n %i non-monomorphic typed symbols\n" (Iter.filter_count (fun _ -> true) ty_symbols) );*)
     (* TODO handle exceptions *)
     (*let symbol_subst mono_symbols fun_symbol fun_ty =
@@ -98,8 +161,7 @@ let apply_subst term subst =
 
 let new_terms mono_terms terms =
     (*(Printf.printf "\n we have %i mono terms\n" (TermSet.cardinal mono_terms));
-    (Printf.printf "\n we have %i non-mono terms\n" (TermSet.cardinal terms));
-    (Printf.printf "\nWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\n");*)
+    (Printf.printf "\n we have %i non-mono terms\n" (TermSet.cardinal terms));*)
     let res = TermSet.fold (fun term term_set -> TermSet.union term_set (new_terms_single mono_terms term)) terms TermSet.empty in
     (*InnerTerm.show_type_arguments := true;
     (TermSet.iter (fun t -> (Printf.printf "\n new term: %s " (Term.to_string t))) res);
