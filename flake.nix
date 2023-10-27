@@ -1,87 +1,100 @@
 {
-  description = "the flake for this project";
-
   inputs = {
-    # Convenience functions for writing flakes
     flake-utils.url = "github:numtide/flake-utils";
-    # nixpkgs
     nixpkgs.url = "github:NixOs/nixpkgs/nixpkgs-unstable";
   };
 
 
-  outputs = {
-    self,
-    flake-utils,
-    nixpkgs
-  }:
+  outputs = { self, flake-utils, nixpkgs }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = import nixpkgs { inherit system; };
+        inherit (pkgs) ocamlPackages;
+      in
+      rec {
+        packages = {
+          # from https://gitlab.com/vbgl/nixtrapkgs
+          msat = ocamlPackages.buildDunePackage rec {
 
-    flake-utils .lib.eachDefaultSystem (system:
-    let 
-      pkgs = import nixpkgs { inherit system; };
-      ocamlPackages = pkgs.ocamlPackages;
-      lib = nixpkgs.lib;
-      ocaml = ocamlPackages.ocaml;
-    in {
+            pname = "msat";
+            version = "0.9.1";
 
-    zipperposition = ocamlPackages.buildDunePackage;
-    
-    devShell = pkgs.mkShell {
-      buildInputs = with pkgs; [
-        ocaml
-      ]
-        ++ (with ocamlPackages; [
-          merlin
-          containers
-          dune_3
-          ocamlformat
-          containers-data
-          mtime
-          alcotest
-          qcheck-alcotest
-          oseq
-          iter
-          findlib
-          zarith
-          utop
-      ])
-      ++ ([
-        self.packages.${system}.msat
-      ]);
-    };
+            src = pkgs.fetchFromGitHub {
+              owner = "Gbury";
+              repo = pname;
+              rev = "v${version}";
+              hash = "sha256-ER7ZUejW+Zy3l2HIoFDYbR8iaKMvLZWaeWrOAAYXjG4=";
+            };
 
-    packages = {
+            propagatedBuildInputs = [ ocamlPackages.iter ];
 
-      #default = self.packages.${system}.msat;
+            meta = with pkgs.lib; {
+              license = licenses.apsl20;
+              homepage = "https://gbury.github.io/mSAT/";
+              description = "A modular sat/smt solver with proof output";
+            };
+          };
 
-      msat = ocamlPackages.buildDunePackage rec {
+          default = ocamlPackages.buildDunePackage {
+            pname = "zipperposition";
+            version = "2.1";
 
-        # from https://gitlab.com/vbgl/nixtrapkgs
-        pname = "msat";
-        version = "0.9.1";
+            duneVersion = "3";
 
-        src = pkgs.fetchFromGitHub {
-          owner = "Gbury";
-          repo = pname;
-          rev = "v${version}";
-          hash = "sha256-ER7ZUejW+Zy3l2HIoFDYbR8iaKMvLZWaeWrOAAYXjG4=";
+            src = ./.;
+
+            doCheck = true;
+            checkInputs = with ocamlPackages; [ qcheck-alcotest ];
+
+            buildInputs = with ocamlPackages; [
+              containers
+              containers-data
+              iter
+              menhirLib
+              mtime
+              oseq
+              self.packages.${system}.msat
+              zarith
+            ];
+
+            nativeBuildInputs = with ocamlPackages; [
+              menhir
+            ];
+
+            # I believe buildDunePackage calls the wrong command for
+            # multi-outputs dune projects. I know this is an anti-pattern, but
+            # this works just fine.
+            buildPhase = ''
+              dune build --profile=release ''${enableParallelBuilding:+-j $NIX_BUILD_CORES}
+            '';
+
+            checkPhase = ''
+              dune runtest --profile=release ''${enableParallelBuilding:+-j $NIX_BUILD_CORES}
+            '';
+
+            meta = with pkgs.lib; {
+              description = ''
+                An automatic theorem prover in OCaml for typed higher-order
+                logic with equality and datatypes.
+              '';
+              longDescription = ''
+                An automatic theorem prover in OCaml for typed higher-order
+                logic with equality and datatypes, based on
+                superposition+rewriting; and Logtk, a supporting library for
+                manipulating terms, formulas, clauses, etc.
+              '';
+              homepage = "https://sneeuwballen.github.io/zipperposition/";
+              license = licenses.bsd2;
+            };
+          };
         };
 
-        propagatedBuildInputs = [
-          ocamlPackages.iter
-        ];
-
-        preBuild = ''
-          dune build msat.opam
-        '';
-
-        meta = {
-          license = lib.licenses.apsl20;
-          homepage = "https://gbury.github.io/mSAT/";
-          description = "A modular sat/smt solver with proof output";
-        };
-      };
-    };
-
-  });
-
+        devShells.default = pkgs.mkShell (with packages.default; {
+          name = pname + "-dev";
+          packages =
+            buildInputs ++ nativeBuildInputs ++
+            (with ocamlPackages; [ merlin ocaml-lsp ocamlformat utop ]);
+          # TODO: only keep one of merlin and ocaml-lsp, preferably ocaml-lsp
+        });
+      });
 }
