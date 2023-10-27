@@ -12,7 +12,15 @@ module TypeSet = Ty.Set
 module ArgMap = Map.Make(ID)
 
 (* TODO make a neat little module with an ergonomic interface *)
+(* TODO massive refactor once we get this working*)
+(* TODO find more efficient data structures for this process, iter are easy to manipulate but sets would
+ * probably be more appropriate *)
+(* TODO make parameters propoertional*)
+(* TODO quantify at clause level*)
+(* TODO remove literals with uninstantiable type variables *)
 
+let is_instantiated ty =
+    Ty.expected_ty_vars ty == 0  && not (Type.Seq.sub ty |> Iter.exists Type.is_tType)
 
 let match_type ty mono_type =
     let subst = Unif.Ty.matching_same_scope ~scope:0 ~pattern:mono_type ty in
@@ -28,13 +36,6 @@ let match_type ty mono_type =
     (Printf.printf "\n non-mono type: %s" (Ty.to_string ty ));*)
     subst
 
-
-let is_instantiated ty =
-    Ty.expected_ty_vars ty == 0  && not (Type.Seq.sub ty |> Iter.exists Type.is_tType)
-
-
-(* TODO currrent implementation is incorrect because the symbols are taken from the terms as constants
- * therefore, the associated types are that of the constant and are never instantiated *)
 let typed_sym term = 
     (*get all applications*)
     let all_apps = Iter.filter T.is_app (T.Seq.subterms term) in
@@ -55,6 +56,70 @@ let typed_sym term =
     (Iter.iter (fun (ty_args, s, t) -> (Printf.printf "\n symbol %s, type: %s, ty_args: %s" (ID.name s) (Ty.to_string t) (String.concat "; " (List.map Ty.to_string ty_args)) )) res);
     InnerTerm.show_type_arguments := false;
     Iter.map (fun (ty_args, s, _) -> s, ty_args) res
+
+let apply_ty_subst subst ty =
+    Subst.Ty.apply Subst.Renaming.none subst (ty, 0)
+
+(* takes a list of monomorphic types
+ * takes a list of polymorphic types
+ * returns a set (iter for now) of type substitutions that match the 
+ * polymorphic types to the monomorphic types one by one 
+ * expects the list to be of the same length *)
+let type_arg_list_subst type_list_mono type_list_poly =
+    let combine subst_iter mono_ty poly_ty =
+        Iter.cons (match_type poly_ty mono_ty) subst_iter
+    in
+    List.fold_left2 combine Iter.empty type_list_mono type_list_poly
+
+
+(* takes a map of function symbols to monomorphic type arguments
+ * takes a map of function symbols to polymorphic type arguments
+ * returns a set (iter for now) of type substitutions*)
+let derive_type_arg_subst mono_map poly_map = 
+    let type_arg_iter_subst mono_type_args_iter poly_type_args_iter =
+        let poly_arg_iter mono_type_args_iter poly_type_list =
+            Iter.flat_map (type_arg_list_subst poly_type_list) mono_type_args_iter
+        in
+        Iter.flat_map (poly_arg_iter mono_type_args_iter) poly_type_args_iter
+    in
+    (* using find because we assume that all function symbols have been recorded in the mono_map*)
+    let combine fun_sym poly_args_iter acc =
+        Iter.union (type_arg_iter_subst (ArgMap.find fun_sym mono_map) poly_args_iter) acc
+    in
+    ArgMap.fold combine poly_map Iter.empty
+
+(* given a map from function symbols to polymorphic type arguments
+ * given a set (iter for now) of type substitutions
+ * generates two maps of the derived monomorphic and polymorphic type arguments *)
+(* Possible optimisation, do this step at the same time as deriving the substitutions *)
+let apply_subst_map poly_map subst_iter =
+    let iter_map ty_list =
+        Iter.map (fun subst -> List.map (apply_ty_subst subst) ty_list) subst_iter
+    in
+    let mixed_map = ArgMap.map (Iter.flat_map iter_map) poly_map in
+    ()
+
+
+(* takes a map from functions symbols to sets (iter for now) of monomorphic type arguments
+ * takes an array of literals
+ * takes a map from clause_ids to a map of function symbols to sets (iter for now) of monomorphic type arguments
+ * takes a clause id
+ * returns a map of new monomorphic type arguments
+ * returns a map of new polymorphic type arguments
+ * returns an array of literals that have been partially monomorphised
+ * that have been partially monomorphised *)
+let mono_step_clause mono_type_args_map poly_type_args_map literals =
+    (*generate all substitutions from mono and poly type arguments*)
+    (*apply the substitutions to the poly type arguments*)
+    (*split them into the new_mono and new_poly type arguments*)
+    (*apply the substitutions to the literals*)
+    (*returns the new_mono_map, new_poly_map and new_literals*)
+    ()
+
+
+
+
+
 
 let add_term_sym typed_sym_map term =
     let typed_sym = typed_sym term in
@@ -81,24 +146,67 @@ let add_term_sym typed_sym_map term =
 let map_typed_sym map term_iter =
     Iter.fold add_term_sym map term_iter
 
+
 let new_type_args_single non_mono_ty_list mono_ty_list =
     let combine_types subst_iter mono_ty non_mono_ty =
         let new_subst = match_type non_mono_ty mono_ty in
         Iter.cons new_subst subst_iter 
     in
-    List.fold_left2 combine_types Iter.empty mono_ty_list non_mono_ty_list
+    
+    let new_subst = List.fold_left2 combine_types Iter.empty mono_ty_list non_mono_ty_list in
+    let new_ty_arg ty_list subst =
+        List.map (apply_ty_subst subst) ty_list
+    in
+    let new_types = Iter.map (new_ty_arg non_mono_ty_list) new_subst in
+    let new_mono_ty_args = Iter.filter (List.for_all Ty.is_ground) new_types in
+    let new_non_mono_ty_args = Iter.filter (List.for_all (fun ty -> not (Ty.is_ground ty))) new_types in
+    new_subst, new_mono_ty_args, new_non_mono_ty_args
+
 
 let new_type_args mono_ty_args non_mono_ty_list =
-    Iter.flat_map (new_type_args_single non_mono_ty_list) mono_ty_args
+    let new_type_args_iter acc mono_ty_list =
+        let new_subst, new_mono_ty_args, new_non_mono_ty_args = new_type_args_single non_mono_ty_list mono_ty_list in
+        let subst_iter, mono_ty_args, non_mono_ty_args = acc in
+        Iter.union new_subst subst_iter, Iter.union mono_ty_args new_mono_ty_args, Iter.union non_mono_ty_args new_non_mono_ty_args
+    in
+    Iter.fold new_type_args_iter (Iter.empty, Iter.empty, Iter.empty) mono_ty_args
 
-(* TODO make this more efficient by both generating the substitutions and the new types in the same pass*)
-(* TODO find more efficient data structures for this process, iter are easy to manipulate but sets would
- * be more appropriate *)
 let mono_update_sym (mono_ty_args, non_mono_ty_args) =
-    Iter.flat_map (new_type_args mono_ty_args) non_mono_ty_args
+    let update_iter acc non_mono_ty_list =
+        let new_subst, new_mono_ty_args, new_non_mono_ty_args = new_type_args mono_ty_args non_mono_ty_list in
+        let subst_iter, mono_ty_args, non_mono_ty_args = acc in
+        Iter.union new_subst subst_iter, Iter.union mono_ty_args new_mono_ty_args, Iter.union non_mono_ty_args new_non_mono_ty_args
+    in
+    Iter.fold update_iter (Iter.empty, Iter.empty, Iter.empty) non_mono_ty_args
 
-(*let mono_update_step map =
-    let new_subst = Map.fold (fun _ (mono_ty_args, non_mono_ty_args) subst_iter -> Iter.union*)
+
+let mono_update_step (map, subst_iter) =
+    let update_map sym (mono_ty_args, non_mono_ty_args) (map, subst_iter) =
+        let new_subst, new_mono_ty_args, new_non_mono_ty_args = mono_update_sym (mono_ty_args, non_mono_ty_args) in
+        ArgMap.add sym (Iter.union mono_ty_args new_mono_ty_args, Iter.union non_mono_ty_args new_non_mono_ty_args) map, Iter.union subst_iter new_subst
+    in
+    let new_subst, new_map = ArgMap.fold update_map map (ArgMap.empty, Iter.empty) in
+    new_subst, new_map
+
+let monomorphise_clause count literals =
+    let terms_iter = Array.fold_left (fun acc lit -> Iter.union acc (Literal.Seq.terms lit)) Iter.empty literals in
+    let init_map = map_typed_sym ArgMap.empty terms_iter in
+    let rec iter_update counter subst_iter map =
+        if counter <= 0 then subst_iter, map
+        else 
+            let new_map, new_subst_iter = mono_update_step (map, subst_iter) in
+            iter_update (counter-1) new_subst_iter new_map
+    in
+    let subst_iter, map = iter_update count Iter.empty init_map in
+    let apply_subst_lit lit subst =
+        Literal.apply_subst Subst.Renaming.none subst (lit, 0)
+    in
+    let new_lits_iter_arr = Array.map (fun lit -> Iter.map (apply_subst_lit lit) subst_iter) literals in
+    let new_lits_iter = Array.fold_left Iter.union Iter.empty new_lits_iter_arr in
+    new_lits_iter
+
+
+    
 
 
 let all_typed_sym term_set = 
@@ -229,7 +337,7 @@ let monomorphise_lit lit mono_term_set =
             Iter.to_list new_lits
         | _ -> [lit]
 
-let monomorphise_clause literals mono_term_set =
+let monomorphise_clause_old literals mono_term_set =
     (*let terms_iter = Literals.Seq.terms literals in*)
     (*let term_set = Iter.to_set (module TermSet) terms_iter in
     let mono_term_set = monomorphised_terms term_set 5 in*)

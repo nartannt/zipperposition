@@ -223,6 +223,7 @@ module Make(E : Env.S) : S with module Env = E = struct
       invalid_arg "cannot run E if E binary is not set up"
 
 
+  module ArgMap = Monomorphisation.ArgMap
   let try_e active_set passive_set =
     (*monomorphisation occurs here*)
     (*Monormophisation*)
@@ -231,7 +232,7 @@ module Make(E : Env.S) : S with module Env = E = struct
         let clause_proof_step = C.proof_step clause in
         let clause_trail = C.trail clause in
         let clause_penalty = C.penalty clause in
-        let new_lits = Monomorphisation.monomorphise_clause (Iter.to_array (C.Seq.lits clause)) term_iter in
+        let new_lits = Monomorphisation.monomorphise_clause_old (Iter.to_array (C.Seq.lits clause)) term_iter in
         C.create ~penalty:clause_penalty ~trail:clause_trail new_lits clause_proof_step
     in
 
