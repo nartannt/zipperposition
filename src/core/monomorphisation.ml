@@ -10,6 +10,7 @@ module TermSet = T.Set
 module TypeSet = Ty.Set
 
 module ArgMap = Map.Make(ID)
+module ClauseArgMap = Map.Make(Int)
 
 (* TODO make a neat little module with an ergonomic interface *)
 (* TODO massive refactor once we get this working*)
@@ -60,6 +61,9 @@ let typed_sym term =
 let apply_ty_subst subst ty =
     Subst.Ty.apply Subst.Renaming.none subst (ty, 0)
 
+let apply_subst_lit lit subst =
+    Literal.apply_subst Subst.Renaming.none subst (lit, 0)
+
 (* takes a list of monomorphic types
  * takes a list of polymorphic types
  * returns a set (iter for now) of type substitutions that match the 
@@ -70,7 +74,6 @@ let type_arg_list_subst type_list_mono type_list_poly =
         Iter.cons (match_type poly_ty mono_ty) subst_iter
     in
     List.fold_left2 combine Iter.empty type_list_mono type_list_poly
-
 
 (* takes a map of function symbols to monomorphic type arguments
  * takes a map of function symbols to polymorphic type arguments
@@ -97,8 +100,21 @@ let apply_subst_map poly_map subst_iter =
         Iter.map (fun subst -> List.map (apply_ty_subst subst) ty_list) subst_iter
     in
     let mixed_map = ArgMap.map (Iter.flat_map iter_map) poly_map in
-    ()
-
+    let split_iter type_args_iter =
+        (* might be able to find a more efficient way of doing this*)
+        let mono_type_args = Iter.filter (List.for_all Ty.is_ground) type_args_iter in
+        let poly_type_args = Iter.filter (List.for_all (fun ty -> not (Ty.is_ground ty))) type_args_iter in
+        mono_type_args, poly_type_args
+    in
+    let combine_split fun_sym type_args_iter (mono_map, poly_map) =
+        let mono_iter, poly_iter = split_iter type_args_iter in
+        let new_mono_map = ArgMap.add fun_sym mono_iter mono_map in
+        let new_poly_map = ArgMap.add fun_sym poly_iter poly_map in
+        new_mono_map, new_poly_map
+    in
+    let new_mono_map, new_poly_map = ArgMap.fold combine_split mixed_map (ArgMap.empty, ArgMap.empty) in
+    new_mono_map, new_poly_map
+    
 
 (* takes a map from functions symbols to sets (iter for now) of monomorphic type arguments
  * takes an array of literals
@@ -110,14 +126,44 @@ let apply_subst_map poly_map subst_iter =
  * that have been partially monomorphised *)
 let mono_step_clause mono_type_args_map poly_type_args_map literals =
     (*generate all substitutions from mono and poly type arguments*)
+    let subst_iter = derive_type_arg_subst mono_type_args_map poly_type_args_map in
     (*apply the substitutions to the poly type arguments*)
     (*split them into the new_mono and new_poly type arguments*)
+    let new_mono_map, new_poly_map = apply_subst_map poly_type_args_map subst_iter in
+
     (*apply the substitutions to the literals*)
+    let new_lits_iter = Array.fold_left (fun acc lit -> Iter.union acc (Iter.map (apply_subst_lit lit) subst_iter)) Iter.empty literals in
+    let new_lits_arr = Iter.to_array new_lits_iter in
+
     (*returns the new_mono_map, new_poly_map and new_literals*)
+    new_mono_map, new_poly_map, new_lits_arr 
+
+(* takes a map from function symbols to sets (iter for now) of monomorphic type arguments
+ * takes a map from clause_ids to a map from function symbols to sets (iter for now) of polymorphic type arguments
+ * takes a list of clauses under the form of a (clause_id * literal array) (clause_ids are ints)
+ * returns an updated monomorphic map, polymorphic map and set of clauses *)
+let mono_step clause_list mono_map poly_clause_map =
+    let process_clause acc (clause_id, literals) =
+        let (acc_clauses, acc_mono_map, acc_poly_clause_map) = acc in
+        (*assuming it doesn't fail because we previously add all clause ids to the poly_clause_map*)
+        let poly_map = ClauseArgMap.find clause_id poly_clause_map in
+        let (new_mono_map, new_poly_map, new_literals) = mono_step_clause mono_map poly_map literals in
+        let res_mono_map = ArgMap.union (fun _ elem1 elem2 -> Some (Iter.union elem1 elem2)) acc_mono_map new_mono_map in
+        let res_poly_map = ArgMap.union (fun _ elem1 elem2 -> Some (Iter.union elem1 elem2)) poly_map new_poly_map in
+        let res_poly_clause_map = ClauseArgMap.add clause_id res_poly_map acc_poly_clause_map in
+        ((clause_id, new_literals)::acc_clauses, res_mono_map, res_poly_clause_map)
+    in
+    List.fold_left process_clause ([], mono_map, poly_clause_map) clause_list
+        
+(* takes a list of (clause_id, literal array) pairs
+ * takes an integer to limit the numbers of iterations *)
+let monomorphise_problem clause_list loop_count =
+    (* initialise maps, this notably requires making sure we have bindings for all relevant function symbols
+     * as later code operates on the basis of that assumption *)
+
+    (*make loop, iterate and return the new clauses *)
+
     ()
-
-
-
 
 
 
