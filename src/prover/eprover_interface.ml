@@ -225,24 +225,34 @@ module Make(E : Env.S) : S with module Env = E = struct
 
   module ArgMap = Monomorphisation.ArgMap
   let try_e active_set passive_set =
-    (*monomorphisation occurs here*)
-    (*Monormophisation*)
-    let monomorphise_clause clause term_iter =
-        (* Have no idea what I'm doing here *)
-        let clause_proof_step = C.proof_step clause in
-        let clause_trail = C.trail clause in
-        let clause_penalty = C.penalty clause in
-        let new_lits = Monomorphisation.monomorphise_clause_old (Iter.to_array (C.Seq.lits clause)) term_iter in
-        C.create ~penalty:clause_penalty ~trail:clause_trail new_lits clause_proof_step
-    in
 
-    (*let term_iter = Iter.fold (fun iter cl -> Iter.union (E.C.Seq.terms cl) iter) Iter.empty (Iter.union active_set passive_set) in*)
-    let term_map = Iter.map (fun cl -> E.C.Seq.terms cl) (Iter.union active_set passive_set) in
-    let term_iter = Iter.flatten term_map in 
-    let mono_term_set = Monomorphisation.monomorphised_terms_set term_iter 1 in
+    (* this whole section is implemented quite hackily and needs a thoughtful rework*)
+    (*monomorphisation occurs here*)
+    let reconstruct_clause (clause_id, new_lits) original_clause =
+        let new_lits = Array.to_list new_lits in
+        if clause_id = C.id original_clause then
+            (* Have no idea what I'm doing here *)
+            let clause_proof_step = C.proof_step original_clause in
+            let clause_trail = C.trail original_clause in
+            let clause_penalty = C.penalty original_clause in
+            Some (C.create ~penalty:clause_penalty ~trail:clause_trail new_lits clause_proof_step)
+        else
+            None
+    in
     
-    let active_set = Iter.map (fun cl_set -> monomorphise_clause cl_set mono_term_set) active_set in
-    let passive_set = Iter.map (fun cl_set -> monomorphise_clause cl_set mono_term_set) passive_set in
+    let clause_list = Iter.to_list (Iter.union active_set passive_set) in
+
+    let simple_clause_list = List.map (fun cl -> C.id cl, C.lits cl) clause_list in
+    
+    let monomorphised_clauses = Monomorphisation.monomorphise_problem simple_clause_list 5 in
+
+    let monomorphised_iter = Iter.of_list monomorphised_clauses in
+
+    let active_set = Iter.join ~join_row:reconstruct_clause monomorphised_iter active_set in 
+    let passive_set = Iter.join ~join_row:reconstruct_clause monomorphised_iter passive_set in 
+    
+
+
     
     let lambdas_too_deep c =
       let lambda_limit = 6 in
