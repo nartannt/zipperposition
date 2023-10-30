@@ -226,11 +226,12 @@ module Make(E : Env.S) : S with module Env = E = struct
   module ArgMap = Monomorphisation.ArgMap
   let try_e active_set passive_set =
 
+
     (* this whole section is implemented quite hackily and needs a thoughtful rework*)
     (*monomorphisation occurs here*)
     let reconstruct_clause (clause_id, new_lits) original_clause =
         let new_lits = Array.to_list new_lits in
-        if clause_id = C.id original_clause then
+        if clause_id = (C.id original_clause) then
             (* Have no idea what I'm doing here *)
             let clause_proof_step = C.proof_step original_clause in
             let clause_trail = C.trail original_clause in
@@ -252,8 +253,6 @@ module Make(E : Env.S) : S with module Env = E = struct
     let passive_set = Iter.join ~join_row:reconstruct_clause monomorphised_iter passive_set in 
     
 
-
-    
     let lambdas_too_deep c =
       let lambda_limit = 6 in
       C.Seq.terms c

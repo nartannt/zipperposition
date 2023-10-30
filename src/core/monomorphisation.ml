@@ -20,8 +20,12 @@ module ClauseArgMap = Map.Make(Int)
 (* TODO quantify at clause level*)
 (* TODO remove literals with uninstantiable type variables *)
 
+let is_not_meta ty =
+    not (Type.Seq.sub ty |> Iter.exists Type.is_tType)
+
 let is_instantiated ty =
-    Ty.expected_ty_vars ty == 0  && not (Type.Seq.sub ty |> Iter.exists Type.is_tType)
+    (*Ty.expected_ty_vars ty == 0  && not (Type.Seq.sub ty |> Iter.exists Type.is_tType)*)
+    List.for_all is_not_meta (Ty.expected_args ty) && Ty.expected_ty_vars ty = 0
 
 let match_type ty mono_type =
     let subst = Unif.Ty.matching_same_scope ~scope:0 ~pattern:mono_type ty in
@@ -38,24 +42,31 @@ let match_type ty mono_type =
     subst
 
 let typed_sym term = 
+    InnerTerm.show_type_arguments := true;
     (*get all applications*)
     let all_apps = Iter.filter T.is_app (T.Seq.subterms term) in
     (*get all the function symbols and types at the application level*)
     let get_typed_sym app_term =
         let hd_term = T.head_term_mono app_term in
         (*let ty_args, f = T.as_fun app_term in*)
-        let ty_args, f = T.open_fun hd_term in
+        let _, f = T.open_fun hd_term in
         let ty = T.ty hd_term in
-        match T.as_const f with
+        (*if is_instantiated ty then
+            (*(Printf.printf "\n this type: %s" (Ty.to_string (T.ty hd_term));*)
+            Printf.printf "\n this term: %s" (T.to_string hd_term);*)
+        (*match T.as_const f with
             | Some(id) when is_instantiated ty -> Some(ty_args, id, ty)
+            | _ -> None*)
+        (* TODO add a function that splits an app into its type arguments and its function symbol
+         * in Term.ml*)
+        let unsafe_term_to_type (term: T.t) = Ty.of_term_unsafe (term:>InnerTerm.t) in
+        match T.head f with
+            | Some(id) when is_instantiated ty -> Some(List.map unsafe_term_to_type (snd (T.as_app f)), id, ty)
             | _ -> None
     in
     let res = Iter.filter_map get_typed_sym all_apps in
 
-    (*let res = Iter.sort_uniq (T.Seq.typed_symbols term) in*)
-    InnerTerm.show_type_arguments := true;
-    (Iter.iter (fun (ty_args, s, t) -> (Printf.printf "\n symbol %s, type: %s, ty_args: %s" (ID.name s) (Ty.to_string t) (String.concat "; " (List.map Ty.to_string ty_args)) )) res);
-    InnerTerm.show_type_arguments := false;
+    (Iter.iter (fun (ty_args, s, _) -> (Printf.printf "\n symbol %s, ty_args: %s" (ID.name s) (String.concat "; " (List.map Ty.to_string ty_args)) )) res);
     Iter.map (fun (ty_args, s, _) -> s, ty_args) res
 
 let apply_ty_subst subst ty =
@@ -87,6 +98,7 @@ let derive_type_arg_subst mono_map poly_map =
     in
     (* using find because we assume that all function symbols have been recorded in the mono_map*)
     let combine fun_sym poly_args_iter acc =
+        (assert (ArgMap.find_opt fun_sym mono_map != None));
         Iter.union (type_arg_iter_subst (ArgMap.find fun_sym mono_map) poly_args_iter) acc
     in
     ArgMap.fold combine poly_map Iter.empty
@@ -102,8 +114,8 @@ let apply_subst_map poly_map subst_iter =
     let mixed_map = ArgMap.map (Iter.flat_map iter_map) poly_map in
     let split_iter type_args_iter =
         (* might be able to find a more efficient way of doing this*)
-        let mono_type_args = Iter.filter (List.for_all Ty.is_ground) type_args_iter in
-        let poly_type_args = Iter.filter (List.for_all (fun ty -> not (Ty.is_ground ty))) type_args_iter in
+        let mono_type_args = Iter.filter (List.for_all is_instantiated) type_args_iter in
+        let poly_type_args = Iter.filter (List.for_all (fun ty -> not (is_instantiated ty))) type_args_iter in
         mono_type_args, poly_type_args
     in
     let combine_split fun_sym type_args_iter (mono_map, poly_map) =
@@ -162,7 +174,7 @@ let mono_step clause_list mono_map poly_clause_map =
  * note that all function symbols are added to the maps, even when no corresponding type arguments are found
  * this is to avoid trouble when ArgMap.find is used later *)
 let add_typed_sym mono_map poly_map term =
-    let typed_sym = typed_sym term in
+    let typed_symbols = typed_sym term in
     let type_args_are_mono = List.for_all Ty.is_ground in
     (*using tuples because this function will be used in a fold*)
     let update_maps (curr_mono_map, curr_poly_map) (ty_sym, ty_args) =
@@ -185,12 +197,18 @@ let add_typed_sym mono_map poly_map term =
         in
         new_mono_map, new_poly_map
     in
-    Iter.fold update_maps (mono_map, poly_map) typed_sym
+    let res_mono_map, res_poly_map = Iter.fold update_maps (mono_map, poly_map) typed_symbols in
+
+    (* makes sure all function symbols have been added to the mono_map, to be later removed when find_opt
+     * replaces find *)
+    (assert (Iter.for_all (fun (fun_sym, _) -> ArgMap.find_opt fun_sym res_mono_map != None) typed_symbols));
+    (assert (Iter.for_all (fun (fun_sym, _) -> ArgMap.find_opt fun_sym res_poly_map != None) typed_symbols));
+    (assert (ArgMap.for_all (fun fun_sym _ -> ArgMap.find_opt fun_sym res_mono_map != None) res_poly_map));
+    res_mono_map, res_poly_map
 
 (* given an array of literals, returns an iter of all the terms in literals *)
 let terms_iter literals = 
-    Array.fold_left 
-        (fun acc lit -> Iter.union acc (Literal.Seq.terms lit)) Iter.empty literals
+    Literals.Seq.terms literals
 
 (* takes a list of (clause_id, literal array) pairs
  * takes an integer to limit the numbers of iterations
@@ -199,10 +217,16 @@ let monomorphise_problem clause_list loop_count =
     (* will initialise the maps with the function symbol -> type arguments bindings derived from the clauses *)
     let map_initialisation_step (mono_map, clause_poly_map) (clause_id, literals) =
         let clause_terms_iter = terms_iter literals in
+
+        (*InnerTerm.show_type_arguments := true;
+        (Iter.iter (fun term -> (Printf.printf "\n term: %s" (T.to_string term) )) clause_terms_iter);
+        InnerTerm.show_type_arguments := false;*)
+
         let update_maps (curr_mono_map, curr_poly_map) term =
             add_typed_sym curr_mono_map curr_poly_map term
         in
-        let new_mono_map, new_poly_map = Iter.fold update_maps (ArgMap.empty, ArgMap.empty) clause_terms_iter in
+        let new_mono_map, new_poly_map = Iter.fold update_maps (mono_map, ArgMap.empty) clause_terms_iter in
+        (assert (ArgMap.for_all (fun fun_sym _ -> ArgMap.find_opt fun_sym new_mono_map != None) new_poly_map));
         let new_clause_poly_map = match ClauseArgMap.find_opt clause_id clause_poly_map with
             | None -> ClauseArgMap.add clause_id new_poly_map clause_poly_map
             | Some other_poly_map ->
@@ -212,12 +236,20 @@ let monomorphise_problem clause_list loop_count =
                             new_poly_map other_poly_map)
                         clause_poly_map
         in
+        let all_ty_syms = Iter.flat_map typed_sym clause_terms_iter in
+        (assert (Iter.for_all (fun (fun_sym, _) -> ArgMap.find_opt fun_sym new_mono_map != None) all_ty_syms));
+        (assert (ClauseArgMap.for_all (fun _ poly_map -> ArgMap.for_all (fun key _ -> ArgMap.find_opt key new_mono_map != None) poly_map ) new_clause_poly_map));
+
         new_mono_map, new_clause_poly_map
     in
 
     (* create initial maps *)
     let init_mono_map, init_clause_poly_map =
         List.fold_left map_initialisation_step (ArgMap.empty, ClauseArgMap.empty) clause_list in
+
+    (* another check due to a find*)
+    (assert (List.for_all (fun (clause_id, _) -> ClauseArgMap.find_opt clause_id init_clause_poly_map != None) clause_list));
+    (assert (ClauseArgMap.for_all (fun _ poly_map -> ArgMap.for_all (fun key _ -> ArgMap.find_opt key init_mono_map != None) poly_map ) init_clause_poly_map));
 
     (* monomorphisation loop *)
     let rec monomorphisation_loop curr_count mono_map poly_clause_map clause_list =
@@ -236,7 +268,7 @@ let monomorphise_problem clause_list loop_count =
     clause_list_res 
     
 
-
+(*
 
 let add_term_sym typed_sym_map term =
     let typed_sym = typed_sym term in
@@ -460,4 +492,4 @@ let monomorphise_clause_old literals mono_term_set =
     let mono_term_set = monomorphised_terms term_set 5 in*)
     let monomorphise_lits literals = Array.fold_left (fun lit_list lit -> (monomorphise_lit lit mono_term_set)@lit_list) [] literals in
     let res = monomorphise_lits literals in
-    res
+    res*)
