@@ -305,9 +305,10 @@ module Make(E : Env.S) : S with module Env = E = struct
               None
       in
       
-      let clause_list = Iter.to_list (Iter.union (Iter.of_list initial) (Iter.union active_set passive_set)) in
+      let clause_list = Iter.to_list (Iter.union ~eq:C.equal (Iter.of_list initial) (Iter.union ~eq:C.equal active_set passive_set)) in
 
       let simple_clause_list = List.map (fun cl -> C.id cl, C.lits cl) clause_list in
+      
       
       let monomorphised_clauses = Monomorphisation.monomorphise_problem simple_clause_list 5 in
 
@@ -315,7 +316,7 @@ module Make(E : Env.S) : S with module Env = E = struct
 
       let active_set = Iter.join ~join_row:reconstruct_clause monomorphised_iter active_set in 
       let passive_set = Iter.join ~join_row:reconstruct_clause monomorphised_iter passive_set in 
-      let initial = Iter.to_list (Iter.join ~join_row:reconstruct_clause monomorphised_iter (Iter.of_list initial) ) in 
+      let initial = Iter.to_list (Iter.join ~join_row:reconstruct_clause monomorphised_iter (Iter.of_list initial) ) in
 
       let _, ho_clauses = 
         take_ho_clauses ~encoded_symbols ~converter (Iter.append active_set passive_set) in
