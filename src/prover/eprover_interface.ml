@@ -157,16 +157,27 @@ module Make(E : Env.S) : S with module Env = E = struct
                |> (fun syms -> ID.Set.diff syms already_defined)
                |> ID.Set.to_list
     in
+    Printf.printf "we are calling this with %i syms\n" (CCList.length syms);
     (* first printing type declarations, and only then the types *)
     CCList.fold_right (fun sym acc ->
         let ty = Ctx.find_signature_exn sym in
+        Printf.printf "mangled type: %s vs original type %s\n" (Type.to_string (Monomorphisation.convert_type ty)) (Type.to_string ty);
+        (* this is a stupid idea, but it might just work*)
+        let ty = Monomorphisation.convert_type ty in
         if Type.is_tType ty then (
           output_symdecl ~out sym ty;
           acc
         ) else (
-          if Type.Seq.sub ty |> Iter.exists Type.is_tType then (
+          (* if my understanding is correct, since this check is applied to all symbols, then if we were to have a
+           * list int, the list might be considered seperately and lead to raising a polymorphism detected error
+           * even when the type is instantiated in that case*)
+          (* for now i'll assume that monomorphisation actually monomorphises the problem for testing purposes*)
+          (* TODO check for polymorphism*)
+          (*if Type.Seq.sub ty |> Iter.exists Type.is_tType then (
+            Printf.printf "so this is the guilty type: %s, you will not be forgiven\n" (Type.to_string ty);
+            Printf.printf "and you: %s are the guilty symbol\n" (ID.name sym);
             raise PolymorphismDetected;
-          );
+          );*)
           Iter.cons (sym, ty) acc
         )
       ) syms Iter.empty
@@ -184,6 +195,8 @@ module Make(E : Env.S) : S with module Env = E = struct
     e_bin := None 
 
   let run_e prob_path =
+    Printf.printf "path: %s\n" prob_path;
+    (*FileUtil.cp [prob_path] FilePath.current_dir;*)
     match !e_bin with 
     | Some e_path ->
       let to_ = !_timeout in
@@ -196,8 +209,10 @@ module Make(E : Env.S) : S with module Env = E = struct
       (try 
           while not !refutation_found do 
             let line = input_line process_channel in
+            (*Printf.printf "%s\n" line;*)
             if Str.string_match regex_refutation_begin line 0 then 
               refutation_found := true;
+            (*Printf.printf "we got that bool: %b!\n" !refutation_found;*)
           done;
           if !refutation_found then (
             let clause_ids = ref [] in
@@ -224,9 +239,7 @@ module Make(E : Env.S) : S with module Env = E = struct
 
 
   module ArgMap = Monomorphisation.ArgMap
-  let try_e active_set passive_set =
-
-    
+  let try_e poly_active_set poly_passive_set =
 
     let lambdas_too_deep c =
       let lambda_limit = 6 in
@@ -266,7 +279,10 @@ module Make(E : Env.S) : S with module Env = E = struct
     let take_ho_clauses ~converter ~encoded_symbols clauses =
       Iter.filter (fun cl -> 
         let pd = C.proof_depth cl in
-        pd > 0 && pd <= 5) clauses 
+        (*Printf.printf "we good depth wise? %i\n" pd;*)
+        (* TODO understand what this proof depth thing is, below is the original line, it was replaced by true*)
+        (*pd > 0 && pd <= 5) clauses *)
+        true) clauses
       |> Iter.sort ~cmp:(fun c1 c2 ->
         let pd1 = C.proof_depth c1 and pd2 = C.proof_depth c2 in
         if pd1 = pd2 || !_sort_by_weight_only then CCInt.compare (C.ho_weight c1) (C.ho_weight c2)
@@ -288,7 +304,7 @@ module Make(E : Env.S) : S with module Env = E = struct
             let lifted = LLift.lift_lambdas c in
             if CCList.is_empty lifted then [c] else lifted) in
       
-      let encoded_symbols, initial = 
+      let encoded_symbols, poly_initial = 
         take_initial ~converter () in
 
       (* the monomorphisation is implemented quite hackily and needs a thoughtful rework*)
@@ -298,6 +314,7 @@ module Make(E : Env.S) : S with module Env = E = struct
           if clause_id = (C.id original_clause) then
               (* Have no idea what I'm doing here *)
               let clause_proof_step = C.proof_step original_clause in
+              (*Printf.printf "curr proof depth %i\n" (C.proof_depth original_clause);*)
               let clause_trail = C.trail original_clause in
               let clause_penalty = C.penalty original_clause in
               Some (C.create ~penalty:clause_penalty ~trail:clause_trail new_lits clause_proof_step)
@@ -305,22 +322,25 @@ module Make(E : Env.S) : S with module Env = E = struct
               None
       in
       
-      let clause_list = Iter.to_list (Iter.union ~eq:C.equal (Iter.of_list initial) (Iter.union ~eq:C.equal active_set passive_set)) in
-
+      let clause_list = Iter.to_list (Iter.union ~eq:C.equal (Iter.of_list poly_initial) (Iter.union ~eq:C.equal poly_active_set poly_passive_set)) in
       let simple_clause_list = List.map (fun cl -> C.id cl, C.lits cl) clause_list in
-      
-      
       let monomorphised_clauses = Monomorphisation.monomorphise_problem simple_clause_list 5 in
-
       let monomorphised_iter = Iter.of_list monomorphised_clauses in
 
-      let active_set = Iter.join ~join_row:reconstruct_clause monomorphised_iter active_set in 
-      let passive_set = Iter.join ~join_row:reconstruct_clause monomorphised_iter passive_set in 
-      let initial = Iter.to_list (Iter.join ~join_row:reconstruct_clause monomorphised_iter (Iter.of_list initial) ) in
+      let active_set = Iter.join ~join_row:reconstruct_clause monomorphised_iter poly_active_set in 
+      let passive_set = Iter.join ~join_row:reconstruct_clause monomorphised_iter poly_passive_set in 
+      Printf.printf "new passive set counts %i clauses, new active set counts %i clauses\n" (Iter.length active_set) (Iter.length passive_set);
+      Printf.printf "initial passive set counts %i clauses, initial active set counts %i clauses\n" (Iter.length poly_active_set) (Iter.length poly_passive_set);
+      let initial = Iter.to_list (Iter.join ~join_row:reconstruct_clause monomorphised_iter (Iter.of_list poly_initial) ) in
 
       let _, ho_clauses = 
         take_ho_clauses ~encoded_symbols ~converter (Iter.append active_set passive_set) in
+      Printf.printf "new initital clause nb: %i\n" (List.length initial);
+      Printf.printf "initial initital clause nb: %i\n" (List.length poly_initial);
+      (*Printf.printf "ho clause nb: %i\n" (List.length ho_clauses);*)
+      (*List.iter (fun cl -> Printf.printf "this clause has taken its toll, wohoh i know she said [Polymorphism Detected] too many times before wohohoh: %s\n" (C.to_string_tstp cl)) ho_clauses;*)
       let already_defined = output_all ~out initial in
+      (*Printf.printf "what the fuck is an already defined??? %i\n" (ID.Set.cardinal already_defined);*)
       Format.fprintf out "%% -- PASSIVE -- \n";
       ignore(output_all  ~already_defined ~out ho_clauses);
       close_out prob_channel;
@@ -329,6 +349,7 @@ module Make(E : Env.S) : S with module Env = E = struct
       let res = 
         match run_e prob_name with
         | Some ids ->
+          Printf.printf "\nwe got something?\n";
           assert(not (CCList.is_empty ids));
 
           let clauses = List.map (fun id -> 
@@ -338,7 +359,9 @@ module Make(E : Env.S) : S with module Env = E = struct
           let penalty = CCOpt.get_exn @@ Iter.max (Iter.map C.penalty (Iter.of_list clauses)) in
           let trail = C.trail_l clauses in
           Some (C.create ~penalty ~trail [] proof)
-        | _ -> None 
+        | _ ->
+          Printf.printf "\nwe got nothing\n";
+          None 
       in
       (* Sys.remove prob_name; *)
       res

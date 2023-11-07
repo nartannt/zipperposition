@@ -51,6 +51,7 @@
               containers-data
               iter
               menhirLib
+              fileutils
               mtime
               oseq
               self.packages.${system}.msat

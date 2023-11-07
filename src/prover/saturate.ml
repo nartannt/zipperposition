@@ -276,7 +276,7 @@ module Make(E : Env.S) = struct
           if should_try_e timeout then (
             let res = EInterface.try_e (Env.get_active ()) (Env.get_passive ()) in
             match res with 
-            | Some c -> Env.add_passive (Iter.singleton c);
+            | Some c -> Printf.printf "Yipeeee\n"; Env.add_passive (Iter.singleton c);
             | _ -> ()
           );
 

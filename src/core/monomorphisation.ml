@@ -24,16 +24,17 @@ module ClauseArgMap = Map.Make(Int)
 (* TODO perhaps split the monomorphic and polymorphic type arguments into other maps so that we don't 
  * generate the same substitutions at each loop*)
 
-(* Iter.union needs to be provided an equality function because we are dealing in types for which ocaml has no builting equality *)
+(* Iter.union needs to be provided an equality function when dealing with lists of types *)
 let ty_arg_eq ty_arg1 ty_arg2 = List.for_all Fun.id (List.map2 Ty.equal ty_arg1 ty_arg2)
 
+(* the given type does not contain any tType *)
 let is_not_meta ty =
     not (Type.Seq.sub ty |> Iter.exists Type.is_tType)
 
 let is_instantiated ty =
-    (*Ty.expected_ty_vars ty == 0  && not (Type.Seq.sub ty |> Iter.exists Type.is_tType)*)
     List.for_all is_not_meta (Ty.expected_args ty) && Ty.expected_ty_vars ty = 0
 
+(* returns the substitution that allows matching a monomorphic type against a type *)
 let match_type ty mono_type =
     (*Printf.printf "\nwe are matching %s against %s\n" (Ty.to_string mono_type) (Ty.to_string ty);*)
     let subst = Unif.Ty.matching_same_scope ~scope:0 ~pattern:mono_type ty in
@@ -86,6 +87,7 @@ let type_arg_list_subst type_list_mono type_list_poly =
             subst_iter
     in
     let res = List.fold_left2 combine Iter.empty type_list_mono type_list_poly in
+    (*Printf.printf "list.length blabla %i\n" (Iter.length res);*)
     res
 
 
@@ -161,8 +163,8 @@ let apply_subst_map poly_map new_poly_subst old_poly_subst =
     let combine_split fun_sym type_args_iter (acc_mono_map, acc_poly_map) =
         let mono_iter, poly_iter = split_iter type_args_iter in
         (* TODO parametrise and rationalise bounds*)
-        let mono_iter_bound = 1000000 + min 10 (int_of_float (float_of_int (Iter.length (fst (ArgMap.find fun_sym poly_map))) *. 0.5)) in
-        let poly_iter_bound = 1000000 + min 10 (int_of_float (float_of_int (Iter.length (fst (ArgMap.find fun_sym poly_map))) *. 0.5)) in
+        let mono_iter_bound =  max (min 10 (int_of_float (float_of_int (Iter.length (fst (ArgMap.find fun_sym poly_map))) *. 0.5))) 10 in
+        let poly_iter_bound =  max (min 10 (int_of_float (float_of_int (Iter.length (fst (ArgMap.find fun_sym poly_map))) *. 0.5))) 10 in
         let new_mono_map = ArgMap.add fun_sym (iter_truncate mono_iter_bound mono_iter) acc_mono_map in
         let new_poly_map = ArgMap.add fun_sym (iter_truncate poly_iter_bound poly_iter) acc_poly_map in
         new_mono_map, new_poly_map
@@ -185,9 +187,10 @@ let mono_step_clause mono_type_args_map poly_type_args_map literals =
     (* the sort_uniq allows for a consistent arbitrary means of sorting the substitutions for subsequent truncation *)
     let new_poly_subst, old_poly_subst = derive_type_arg_subst mono_type_args_map poly_type_args_map in
     let subst_iter_all = Iter.sort_uniq (iter_subst_union new_poly_subst old_poly_subst) in
+    (*Printf.printf "all substitiutions %i\n" (Iter.length subst_iter_all);*)
 
     (* TODO parametrise bound find some reasonable way to order the subst iter such that truncating makes sense*)
-    let truncate_nb = 100000000 + min (max 1 (int_of_float (float_of_int (Iter.length subst_iter_all) *. 0.1))) 5 in
+    let truncate_nb = min (max 1 (int_of_float (float_of_int (Iter.length subst_iter_all) *. 0.1))) 5 in
     let subst_iter = iter_truncate truncate_nb subst_iter_all in
     (*Printf.printf "new subst %i\n" (Iter.length subst_iter);*)
     (*Printf.printf "We are allowing %i new subst\n" (int_of_float (float_of_int (Iter.length subst_iter_all) *. 0.1));*)
@@ -243,7 +246,7 @@ let mono_step clause_list mono_map poly_clause_map =
         let mono_lits = Array.of_list (List.filter lit_is_monomorphic (Array.to_list new_literals)) in
 
         (* TODO make bound better *)
-        let max_arr_index = 5 + (1000 / (List.length clause_list)) + 1000000 in
+        let max_arr_index = 5 + (1000 / (List.length clause_list)) in
         let mono_lits_truncated = Array.sub mono_lits 0 (min (Array.length mono_lits) max_arr_index) in
         
         new_lits := !new_lits + (Array.length mono_lits_truncated);
@@ -288,9 +291,9 @@ let add_typed_sym mono_map poly_map term =
     let type_args_are_mono = List.for_all Ty.is_ground in
     let map_update_fun ty_args mono_case = function
         | None when mono_case -> Some (Iter.empty, Iter.singleton ty_args)
-        | Some (curr_iter, _) when mono_case -> Some (Iter.empty, Iter.cons ty_args curr_iter)
+        | Some (_, curr_iter) when mono_case -> Some (Iter.empty, Iter.cons ty_args curr_iter)
         | None -> Some (Iter.empty, Iter.empty)
-        | Some (curr_iter, _ )-> Some (Iter.empty, curr_iter)
+        | Some (_, curr_iter)-> Some (Iter.empty, curr_iter)
     in
     (*using tuples because this function will be used in a fold*)
     let update_maps (curr_mono_map, curr_poly_map) (ty_sym, ty_args) =
@@ -382,4 +385,22 @@ let monomorphise_problem clause_list loop_count =
         mono_clauses_no_empty
     in
 
+    let lits_replace = Array.map (fun _ -> Literal.mk_absurd) in
+    let crap_clauses = List.map (fun (clause_id, lits) -> clause_id, lits_replace lits) mono_clause_list_res in
+    Printf.printf "We end up with a grand total of ... %i clauses!\n" (List.length crap_clauses);
     mono_clause_list_res
+
+(* We're not done yet, because even though we have monomorphised the clauses, they still make use of polymorphic type constructors which can't be handled by e 
+ * therefore, we must replace all instantiated polymorphic type constructors by a monomorphic type, this should not be hard, ex: replace all list int by list_int
+ * all fun int bool by fun_int_bool ect ...*)
+
+let rec convert_type ty = 
+    let args = Ty.expected_args ty in
+    let ret = Ty.returns ty in
+    if args != [] then
+        let open Ty in
+        (List.map convert_type args) ==> (convert_type ret)
+    else Ty.const (ID.make (Ty.mangle ty))
+    
+
+    
