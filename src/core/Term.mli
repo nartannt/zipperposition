@@ -482,6 +482,8 @@ module Conv : sig
   val var_to_simple_var : ?prefix:string -> ctx -> var -> TypedSTerm.t Var.t
 end
 
+val mangle_term: t -> t
+
 (**/**)
 val rebuild_rec : t -> t (* rebuild term fully, checking types *)
 (**/**)

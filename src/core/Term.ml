@@ -135,6 +135,7 @@ let app f l = match l with
   | [] -> f
   | _::_ ->
     (* first; compute type *)
+    (*Printf.printf "we got f be %s\n" (Type.to_string (ty f)) ;*)
     let ty_result = Type.apply_unsafe (ty f) l in
     (* apply constant to type args and args *)
     let res = T.app ~ty:(ty_result : Type.t :> T.t) f l in
@@ -1391,6 +1392,40 @@ let rebuild_rec t =
     end
   in
   aux [] t
+
+
+(*mangle the given type such that it becomes a monomorphic constant*)
+let rec convert_type ty = 
+    let open Type in
+    let args = Type.expected_args ty in
+    let ret = Type.returns ty in
+    if args != [] then
+        (List.map convert_type args) ==> (convert_type ret)
+    else Type.const (ID.make (Type.mangle ty))
+
+(* convert term such that it has mangled types, basically a copy of rebuild_rec
+ * if we keep this approach, we will need TODO some refactoring (should be easy) *)
+let mangle_term t =
+  let rec aux env t =
+    let old_ty = Type.rebuild_rec ~env (ty t) in
+    let ty = convert_type old_ty in
+    Printf.printf "it's all right mate: %s\n" (Type.to_string ty);
+    begin match view t with
+      | Var v -> var (HVar.cast ~ty v)
+      | DB i -> bvar ~ty i
+      | Const id -> const ~ty id
+      | App (f, l) -> app (aux env f) (List.map (aux env) l)
+      | AppBuiltin (b,l) -> app_builtin ~ty b (List.map (aux env) l)
+      | Fun (ty_arg,bod) ->
+        let ty_arg =
+          Type.rebuild_rec ~env ty_arg
+          |> Type.unsafe_eval_db env
+        in
+        fun_ ty_arg (aux (ty_arg::env) bod)
+    end
+  in
+  aux [] t
+
 
 let rec normalize_bools t =
   let weight_cmp s t =

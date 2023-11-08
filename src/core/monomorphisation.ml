@@ -12,7 +12,7 @@ module TypeSet = Ty.Set
 module ArgMap = Map.Make(ID)
 module ClauseArgMap = Map.Make(Int)
 
-(* TODO make a neat little module with an ergonomic interface *)
+(* TODO make a neat little module with a decent interface *)
 (* TODO massive refactor once we get this working*)
 (* TODO find more efficient data structures for this process, iter are easy to manipulate but sets would
  * probably be more appropriate *)
@@ -21,8 +21,11 @@ module ClauseArgMap = Map.Make(Int)
 (* TODO rewrite typed_sym to get rid of all the junk*)
 (* TODO rewrite final monomorphic filtering more elegantly*)
 (* TODO use sets of lits to make sure we don't have duplicates*)
-(* TODO perhaps split the monomorphic and polymorphic type arguments into other maps so that we don't 
- * generate the same substitutions at each loop*)
+(* TODO remove useless prints *)
+(* TODO write nice documentation and comments *)
+(* TODO CI tests *)
+(* TODO preliminary tests *)
+(* TODO squash all commits and make the necessary rebase so that this can be added to the main zipperposition branch*)
 
 (* Iter.union needs to be provided an equality function when dealing with lists of types *)
 let ty_arg_eq ty_arg1 ty_arg2 = List.for_all Fun.id (List.map2 Ty.equal ty_arg1 ty_arg2)
@@ -84,6 +87,7 @@ let type_arg_list_subst type_list_mono type_list_poly =
         try 
             Iter.cons (match_type poly_ty mono_ty) subst_iter
         with Unif.Fail ->
+            Printf.printf "mono type: %s and poly type: %s\n" (Ty.to_string mono_ty) (Ty.to_string poly_ty);
             subst_iter
     in
     let res = List.fold_left2 combine Iter.empty type_list_mono type_list_poly in
@@ -215,6 +219,15 @@ let mono_step_clause mono_type_args_map poly_type_args_map literals =
  * takes a list of clauses under the form of a (clause_id * literal array) (clause_ids are ints)
  * returns an updated monomorphic map, polymorphic map and list of updated clauses *)
 let mono_step clause_list mono_map poly_clause_map =
+    let print_all_type_args fun_sym iter =
+        Printf.printf "for this function symbol: %s -- we have the following type arguments (old) :\n" (ID.name fun_sym);
+        Iter.iter (fun ty_args -> Printf.printf "%s\n" (String.concat "; " (List.map Ty.to_string ty_args))) (fst iter);
+        Printf.printf "(new) :\n";
+        Iter.iter (fun ty_args -> Printf.printf "%s\n" (String.concat "; " (List.map Ty.to_string ty_args))) (snd iter);
+    in
+    (*ArgMap.iter print_all_type_args mono_map;*)
+
+
     let new_lits = ref 0 in
     (*let ty_arg_map_fold original_map fun_sym new_iter acc_map =
         let original_old_iter, original_new_iter = ArgMap.find fun_sym original_map in

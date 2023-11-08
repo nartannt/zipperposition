@@ -1670,9 +1670,15 @@ let rec erase t = match view t with
   | Const s -> STerm.const (ID.to_string s)
   | App (f, l) -> STerm.app (erase f) (List.map erase l)
   | Bind (b,v,t) ->
-    STerm.bind b
-      [STerm.V (Var.to_string v), Some (erase (Var.ty v))]
-      (erase t)
+    (* TODO remove this tmp setup for testing purposes*)
+    if true then
+        STerm.bind b
+          [STerm.V (Var.to_string v), Some (STerm.const (Ty.mangle (Var.ty v)))]
+          (erase t)
+    else
+        STerm.bind b
+          [STerm.V (Var.to_string v), Some (erase (Var.ty v))]
+          (erase t)
   | AppBuiltin (b, l) -> STerm.app_builtin b (List.map erase l)
   | Ite (a,b,c) -> STerm.ite (erase a) (erase b) (erase c)
   | Match (u, l) ->

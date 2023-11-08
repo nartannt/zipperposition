@@ -157,11 +157,11 @@ module Make(E : Env.S) : S with module Env = E = struct
                |> (fun syms -> ID.Set.diff syms already_defined)
                |> ID.Set.to_list
     in
-    Printf.printf "we are calling this with %i syms\n" (CCList.length syms);
+    (*Printf.printf "we are calling this with %i syms\n" (CCList.length syms);*)
     (* first printing type declarations, and only then the types *)
     CCList.fold_right (fun sym acc ->
         let ty = Ctx.find_signature_exn sym in
-        Printf.printf "mangled type: %s vs original type %s\n" (Type.to_string (Monomorphisation.convert_type ty)) (Type.to_string ty);
+        (*Printf.printf "mangled type: %s vs original type %s\n" (Type.to_string (Monomorphisation.convert_type ty)) (Type.to_string ty);*)
         (* this is a stupid idea, but it might just work*)
         let ty = Monomorphisation.convert_type ty in
         if Type.is_tType ty then (
@@ -173,11 +173,11 @@ module Make(E : Env.S) : S with module Env = E = struct
            * even when the type is instantiated in that case*)
           (* for now i'll assume that monomorphisation actually monomorphises the problem for testing purposes*)
           (* TODO check for polymorphism*)
-          (*if Type.Seq.sub ty |> Iter.exists Type.is_tType then (
+          if Type.Seq.sub ty |> Iter.exists Type.is_tType then (
             Printf.printf "so this is the guilty type: %s, you will not be forgiven\n" (Type.to_string ty);
             Printf.printf "and you: %s are the guilty symbol\n" (ID.name sym);
             raise PolymorphismDetected;
-          );*)
+          );
           Iter.cons (sym, ty) acc
         )
       ) syms Iter.empty
@@ -331,16 +331,22 @@ module Make(E : Env.S) : S with module Env = E = struct
       let passive_set = Iter.join ~join_row:reconstruct_clause monomorphised_iter poly_passive_set in 
       Printf.printf "new passive set counts %i clauses, new active set counts %i clauses\n" (Iter.length active_set) (Iter.length passive_set);
       Printf.printf "initial passive set counts %i clauses, initial active set counts %i clauses\n" (Iter.length poly_active_set) (Iter.length poly_passive_set);
+      (*no need to apply mangle conversion to initial because we do it later, will need to be cleaned up TODO*)
       let initial = Iter.to_list (Iter.join ~join_row:reconstruct_clause monomorphised_iter (Iter.of_list poly_initial) ) in
 
       let _, ho_clauses = 
         take_ho_clauses ~encoded_symbols ~converter (Iter.append active_set passive_set) in
       Printf.printf "new initital clause nb: %i\n" (List.length initial);
       Printf.printf "initial initital clause nb: %i\n" (List.length poly_initial);
+      (*let mangle_clause cl =
+          let mangled_lits = Array.map (fun lit -> Literal.map Term.mangle_term lit) (C.lits cl) in
+          reconstruct_clause (C.id cl, mangled_lits) cl
+      in
+      let ho_clauses = List.filter_map mangle_clause ho_clauses in*)
+
       (*Printf.printf "ho clause nb: %i\n" (List.length ho_clauses);*)
       (*List.iter (fun cl -> Printf.printf "this clause has taken its toll, wohoh i know she said [Polymorphism Detected] too many times before wohohoh: %s\n" (C.to_string_tstp cl)) ho_clauses;*)
       let already_defined = output_all ~out initial in
-      (*Printf.printf "what the fuck is an already defined??? %i\n" (ID.Set.cardinal already_defined);*)
       Format.fprintf out "%% -- PASSIVE -- \n";
       ignore(output_all  ~already_defined ~out ho_clauses);
       close_out prob_channel;
