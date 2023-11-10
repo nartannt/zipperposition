@@ -163,6 +163,7 @@ module Make(E : Env.S) : S with module Env = E = struct
         let ty = Ctx.find_signature_exn sym in
         (*Printf.printf "mangled type: %s vs original type %s\n" (Type.to_string (Monomorphisation.convert_type ty)) (Type.to_string ty);*)
         (* this is a stupid idea, but it might just work*)
+        (* TODO integrate this cleanly*)
         let ty = Monomorphisation.convert_type ty in
         if Type.is_tType ty then (
           output_symdecl ~out sym ty;
@@ -307,6 +308,10 @@ module Make(E : Env.S) : S with module Env = E = struct
       let encoded_symbols, poly_initial = 
         take_initial ~converter () in
 
+      (*List.iter (fun cl -> Printf.printf "\nWe have a clause: %s" (C.to_string cl)) ((E.C.ClauseSet.to_list !init_clauses) @ (Iter.to_list poly_active_set) @ (Iter.to_list poly_passive_set));*)
+      (*List.iter (fun cl -> Printf.printf "\nWe have a clause: %s" (C.to_string cl)) (poly_initial @ (Iter.to_list poly_active_set) @ (Iter.to_list poly_passive_set));*)
+      (*List.iter (fun cl -> Printf.printf "\nWe have a clause: %s" (C.to_string cl)) ([] @ (Iter.to_list poly_active_set) @ (Iter.to_list poly_passive_set));*)
+      
       (* the monomorphisation is implemented quite hackily and needs a thoughtful rework*)
       (* monomorphisation occurs here *)
       let reconstruct_clause (clause_id, new_lits) original_clause =
@@ -321,6 +326,7 @@ module Make(E : Env.S) : S with module Env = E = struct
           else
               None
       in
+
       
       let clause_list = Iter.to_list (Iter.union ~eq:C.equal (Iter.of_list poly_initial) (Iter.union ~eq:C.equal poly_active_set poly_passive_set)) in
       let simple_clause_list = List.map (fun cl -> C.id cl, C.lits cl) clause_list in
