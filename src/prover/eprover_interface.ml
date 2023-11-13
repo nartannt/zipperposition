@@ -141,10 +141,10 @@ module Make(E : Env.S) : S with module Env = E = struct
     match (C.distance_to_goal clause) with 
     | Some d when d = 0 ->
       Format.fprintf out "@[thf(zip_cl_%d,negated_conjecture,@[%a@]).@]@\n"
-        (C.id clause) TypedSTerm.TPTP_THF.pp lits_converted
+        (C.id clause) TypedSTerm.TPTP_THF.pp_mangle lits_converted
     | _ -> 
       Format.fprintf out "@[thf(zip_cl_%d,axiom,@[%a@]).@]@\n"
-        (C.id clause) TypedSTerm.TPTP_THF.pp lits_converted
+        (C.id clause) TypedSTerm.TPTP_THF.pp_mangle lits_converted
 
 
   let output_symdecl ~out sym ty =
@@ -164,7 +164,6 @@ module Make(E : Env.S) : S with module Env = E = struct
         (*Printf.printf "mangled type: %s vs original type %s\n" (Type.to_string (Monomorphisation.convert_type ty)) (Type.to_string ty);*)
         (* this is a stupid idea, but it might just work*)
         (* TODO integrate this cleanly*)
-        let ty = Monomorphisation.convert_type ty in
         if Type.is_tType ty then (
           output_symdecl ~out sym ty;
           acc
@@ -197,10 +196,10 @@ module Make(E : Env.S) : S with module Env = E = struct
 
   let run_e prob_path =
     Printf.printf "path: %s\n" prob_path;
-    (*FileUtil.cp [prob_path] FilePath.current_dir;*)
     match !e_bin with 
     | Some e_path ->
       let to_ = !_timeout in
+      Printf.printf "why is this not before all that?\n";
       let cmd = 
         CCFormat.sprintf "timeout %d %s --pos-ext=all --neg-ext=all %s --cpu-limit=%d %s -s -p" 
           (to_+2) e_path prob_path to_ (if !_e_auto then "--auto" else "--auto-schedule") in
@@ -209,12 +208,14 @@ module Make(E : Env.S) : S with module Env = E = struct
       let res = 
       (try 
           while not !refutation_found do 
+            Printf.printf "Still good?\n\n";
             let line = input_line process_channel in
             (*Printf.printf "%s\n" line;*)
             if Str.string_match regex_refutation_begin line 0 then 
               refutation_found := true;
             (*Printf.printf "we got that bool: %b!\n" !refutation_found;*)
           done;
+          Printf.printf "and now?\n\n";
           if !refutation_found then (
             let clause_ids = ref [] in
             (try 
@@ -229,11 +230,15 @@ module Make(E : Env.S) : S with module Env = E = struct
                 )
               done;
               Some !clause_ids
-            with End_of_file -> Some !clause_ids)
+            with End_of_file -> 
+                Some !clause_ids)
           ) else None
-        with End_of_file -> None)
+        with End_of_file ->
+            Printf.printf "here i'm guessing\n";
+            None)
       in
       close_in process_channel;
+      Printf.printf "huh\n";
       res
     | None ->
       invalid_arg "cannot run E if E binary is not set up"
@@ -271,6 +276,7 @@ module Make(E : Env.S) : S with module Env = E = struct
     in
     
     let take_initial ~converter () =
+      (*Printf.printf "TAKE INITIAL: %i\n" (C.ClauseSet.cardinal !init_clauses);*)
       let module CS = C.ClauseSet in
       CS.filter (fun c -> not (lambdas_too_deep c)) !init_clauses
       |> CS.to_iter
@@ -339,10 +345,11 @@ module Make(E : Env.S) : S with module Env = E = struct
       Printf.printf "initial passive set counts %i clauses, initial active set counts %i clauses\n" (Iter.length poly_active_set) (Iter.length poly_passive_set);
       (*no need to apply mangle conversion to initial because we do it later, will need to be cleaned up TODO*)
       let initial = Iter.to_list (Iter.join ~join_row:reconstruct_clause monomorphised_iter (Iter.of_list poly_initial) ) in
+      Printf.printf "we currently HAVE %i THIS many intial clauses\n" (List.length initial);
 
       let _, ho_clauses = 
         take_ho_clauses ~encoded_symbols ~converter (Iter.append active_set passive_set) in
-      Printf.printf "new initital clause nb: %i\n" (List.length initial);
+      Printf.printf "new initital clause nb: %i\n" (List.length poly_initial);
       Printf.printf "initial initital clause nb: %i\n" (List.length poly_initial);
       (*let mangle_clause cl =
           let mangled_lits = Array.map (fun lit -> Literal.map Term.mangle_term lit) (C.lits cl) in
@@ -350,15 +357,16 @@ module Make(E : Env.S) : S with module Env = E = struct
       in
       let ho_clauses = List.filter_map mangle_clause ho_clauses in*)
 
-      (*Printf.printf "ho clause nb: %i\n" (List.length ho_clauses);*)
+      Printf.printf "ho clause nb: %i\n" (List.length ho_clauses);
       (*List.iter (fun cl -> Printf.printf "this clause has taken its toll, wohoh i know she said [Polymorphism Detected] too many times before wohohoh: %s\n" (C.to_string_tstp cl)) ho_clauses;*)
       let already_defined = output_all ~out initial in
       Format.fprintf out "%% -- PASSIVE -- \n";
-      ignore(output_all  ~already_defined ~out ho_clauses);
+      ignore(output_all ~already_defined ~out ho_clauses);
       close_out prob_channel;
       let cl_set = initial @ ho_clauses in
 
       let res = 
+        (*FileUtil.cp [prob_name] FilePath.current_dir;*)
         match run_e prob_name with
         | Some ids ->
           Printf.printf "\nwe got something?\n";

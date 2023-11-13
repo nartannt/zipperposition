@@ -12,18 +12,21 @@ module TypeSet = Ty.Set
 module ArgMap = Map.Make(ID)
 module ClauseArgMap = Map.Make(Int)
 
+(* Note: for ease of notation, variables, functions ... use "polymorphic" in the sense of "non-monomorphic" *)
+
 (* TODO make a neat little module with a decent interface *)
 (* TODO massive refactor once we get this working*)
-(* TODO find more efficient data structures for this process, iter are easy to manipulate but sets would
+(* TODO find more efficient data structures for this process, iter are easy to manipulate but sets might 
  * probably be more appropriate *)
+(* TODO mangle all the types *)
 (* TODO make parameters proportional*)
 (* TODO remove literals with uninstantiable type variables *)
 (* TODO rewrite typed_sym to get rid of all the junk*)
 (* TODO rewrite final monomorphic filtering more elegantly*)
-(* TODO use sets of lits to make sure we don't have duplicates*)
 (* TODO remove useless prints *)
 (* TODO write nice documentation and comments *)
 (* TODO CI tests *)
+(* TODO create function to order type arguments for heuristic truncation *)
 (* TODO preliminary tests *)
 (* TODO squash all commits and make the necessary rebase so that this can be added to the main zipperposition branch*)
 (* TODO check if a newly generated type already exists and don't add it to new in that case *)
@@ -63,6 +66,9 @@ let typed_sym term =
             | _ -> None
     in
     Iter.filter_map get_typed_sym all_apps
+
+(* given a list of type arguments returns a score in order based on ??? *)
+let ty_args_score ty_args = 0
 
 (* applies a substitution to a type*)
 let apply_ty_subst subst ty =
@@ -145,7 +151,7 @@ let apply_subst_map poly_map new_poly_subst old_poly_subst =
     let apply_ty_subst_arg_opt subst ty_args =
         let new_ty_args = List.map (apply_ty_subst subst) ty_args in
         let is_diff = List.exists2 (fun ty_1 ty_2 -> not (Ty.equal ty_1 ty_2)) ty_args new_ty_args in
-        if true || is_diff then Some new_ty_args
+        if is_diff then Some new_ty_args
         else None
     in
 
@@ -167,20 +173,10 @@ let apply_subst_map poly_map new_poly_subst old_poly_subst =
         mono_type_args, poly_type_args
     in
 
-    let mono_rel_bound = 0.5 in
-    let poly_rel_bound = 0.5 in
-    let mono_abs_bound = 10 in
-    let poly_abs_bound = 10 in
-
     let combine_split fun_sym type_args_iter (acc_mono_map, acc_poly_map) =
         let mono_iter, poly_iter = split_iter type_args_iter in
-        let rel_rounded_bound total rel_max =
-            max 1 (int_of_float ((float_of_int total) *. rel_max))
-        in
-        let mono_iter_bound =  min mono_abs_bound (rel_rounded_bound (Iter.length (fst (ArgMap.find fun_sym poly_map))) mono_rel_bound) in
-        let poly_iter_bound =  min poly_abs_bound (rel_rounded_bound (Iter.length (fst (ArgMap.find fun_sym poly_map))) poly_rel_bound) in
-        let new_mono_map = ArgMap.add fun_sym (iter_truncate mono_iter_bound mono_iter) acc_mono_map in
-        let new_poly_map = ArgMap.add fun_sym (iter_truncate poly_iter_bound poly_iter) acc_poly_map in
+        let new_mono_map = ArgMap.add fun_sym mono_iter acc_mono_map in
+        let new_poly_map = ArgMap.add fun_sym poly_iter acc_poly_map in
         new_mono_map, new_poly_map
     in
     let new_mono_map, new_poly_map = ArgMap.fold combine_split mixed_map (ArgMap.empty, ArgMap.empty) in
@@ -197,6 +193,33 @@ let apply_subst_map poly_map new_poly_subst old_poly_subst =
  * returns an array of literals that have been partially monomorphised
  * that have been partially monomorphised *)
 let mono_step_clause mono_type_args_map poly_type_args_map literals =
+
+    (* the bounds that we want to establish *)
+
+    (* how many new mono type args we allow to be derived from each clause, relative and hard cap*)
+    let new_mono_per_clause_rel = 1.5 in
+    let new_mono_per_clause_abs = 1000 in
+    (* the relative floor is for the cases where the relative proportion is too low to yield any new
+     * clauses (ie: we have 10 type arguments but a limit of 0.05, then mono_rel_floor type arguments are
+     * allowed instead of 0) still capped by the abs cap*)
+    let mono_rel_floor = 2 in
+    (* same as for the monomorphic bounds *)
+    let new_poly_per_clause_rel = 1.5 in
+    let new_poly_per_clause_abs = 1000 in
+    let poly_rel_floor = 2 in
+
+
+    (* TODO same function to refactor*)
+    let max_nb_mono iter_len =
+        let rel_int = int_of_float (float_of_int iter_len *. new_mono_per_clause_rel) in
+        min new_mono_per_clause_abs (max mono_rel_floor rel_int)
+    in
+    let max_nb_poly iter_len =
+        let rel_int = int_of_float (float_of_int iter_len *. new_poly_per_clause_rel) in
+        min new_poly_per_clause_abs (max poly_rel_floor rel_int)
+    in
+
+
     (*generate all substitutions from mono and poly type arguments*)
     let new_poly_subst_all, old_poly_subst_all = derive_type_arg_subst mono_type_args_map poly_type_args_map in
 
@@ -210,7 +233,17 @@ let mono_step_clause mono_type_args_map poly_type_args_map literals =
 
     (*apply the substitutions to the poly type arguments*)
     (*split them into the new_mono and new_poly type arguments*)
-    let new_mono_map, new_poly_map = apply_subst_map poly_type_args_map new_poly_subst old_poly_subst in
+    let new_mono_map_all, new_poly_map_all = apply_subst_map poly_type_args_map new_poly_subst old_poly_subst in
+
+    (* truncationg the new type arguments according to the bounds *)
+    (* TODO, same function, to refactor*)
+    (* TODO, function unclear, seperate out*)
+    let new_mono_map = 
+        ArgMap.mapi (fun fun_sym iter -> iter_truncate (max_nb_mono (Iter.length (fst (ArgMap.find fun_sym mono_type_args_map)))) iter) new_mono_map_all
+    in
+    let new_poly_map = 
+        ArgMap.mapi (fun fun_sym iter -> iter_truncate (max_nb_poly (Iter.length (fst (ArgMap.find fun_sym poly_type_args_map)))) iter) new_poly_map_all
+    in
 
     (*apply the substitutions to the literals*)
     let new_lits_iter = 
@@ -420,3 +453,15 @@ let rec convert_type ty =
         let open Ty in
         (List.map convert_type args) ==> (convert_type ret)
     else Ty.const (ID.make (Ty.mangle ty))
+
+
+
+let convert_lit lit =
+    let tst_lit = Literal.Conv.lit_to_tst lit in
+    ()
+
+(* converts the given iter of literals to simple terms with mangled types*)
+(* my attempted way to do this is to use the existing conversion functions except
+ * that whenever a type would be converted, we transform it into a mangled constant*)
+let convert_lits lit_iter =
+    Iter.empty
