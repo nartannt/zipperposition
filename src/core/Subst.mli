@@ -33,6 +33,7 @@ module Renaming : sig
 
   val none: t
   (** Renaming that doesn't actually rename(!) *)
+
 end
 
 (** {3 Basics} *)
