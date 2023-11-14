@@ -1679,17 +1679,20 @@ let rec mangle_erase ty =
 
 (* TODO make mangle not an optional argument*)
 (* TODO make tests for mangle_erase *)
+let shitty_var_replace str =
+    (Str.global_replace (Str.regexp "-") "_" str)
 let rec erase t ?(mangle = false) =
   match ty t with
-    | None when mangle -> mangle_erase t
+    | Some ty_res when is_tType ty_res && mangle -> mangle_erase t
     | _ -> 
       match view t with
-          | Var v -> STerm.var (Var.to_string v)
+          (* TODO temporary hackish fix*)
+          | Var v -> STerm.var (shitty_var_replace (Var.to_string v))
           | Const s -> STerm.const (ID.to_string s)
           | App (f, l) -> STerm.app (erase f ~mangle) (List.map (erase ~mangle) l)
           | Bind (b,v,t) ->
             STerm.bind b
-              [STerm.V (Var.to_string v), Some (erase (Var.ty v) ~mangle)]
+              [STerm.V (shitty_var_replace (Var.to_string v)), Some (erase (Var.ty v) ~mangle)]
               (erase t ~mangle)
           | AppBuiltin (b, l) -> STerm.app_builtin b (List.map (erase ~mangle) l)
           | Ite (a,b,c) -> STerm.ite (erase a ~mangle) (erase b ~mangle) (erase c ~mangle)

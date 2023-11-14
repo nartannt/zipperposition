@@ -550,6 +550,8 @@ module TPTP_THF = struct
     Format.fprintf out "( @[%a@] )" pp t
   and pp_var out = function
     | Wildcard -> CCFormat.string out "$_"
+    (* TODO this is for testing purposes even if i see no theoretical harm,
+     * will need to find a better solution *)
     | V s -> Util.pp_var_tstp out s
 
   let to_string = CCFormat.to_string pp

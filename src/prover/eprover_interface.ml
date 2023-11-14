@@ -149,7 +149,7 @@ module Make(E : Env.S) : S with module Env = E = struct
 
   let output_symdecl ~out sym ty =
     Format.fprintf out "@[thf(@['%a_type',type,@[%a@]:@ @[%a@]@]).@]@\n" 
-      ID.pp sym ID.pp_tstp sym (Type.TPTP.pp_ho ~depth:0) ty
+      ID.pp sym ID.pp_tstp sym (Type.TPTP.pp_ho ~depth:0) (Monomorphisation.convert_type ty)
 
   let output_all ?(already_defined=ID.Set.empty) ~out cl_set =
     let cl_iter = Iter.of_list cl_set in
@@ -173,7 +173,7 @@ module Make(E : Env.S) : S with module Env = E = struct
            * even when the type is instantiated in that case*)
           (* for now i'll assume that monomorphisation actually monomorphises the problem for testing purposes*)
           (* TODO check for polymorphism*)
-          if Type.Seq.sub ty |> Iter.exists Type.is_tType then (
+          if false && Type.Seq.sub ty |> Iter.exists Type.is_tType then (
             Printf.printf "so this is the guilty type: %s, you will not be forgiven\n" (Type.to_string ty);
             Printf.printf "and you: %s are the guilty symbol\n" (ID.name sym);
             raise PolymorphismDetected;

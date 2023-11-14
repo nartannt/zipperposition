@@ -76,7 +76,7 @@ let apply_ty_subst subst ty =
 
 (* applies a substitution to a literal *)
 let apply_subst_lit lit subst =
-    Literal.apply_subst Subst.Renaming.none subst (lit, 0)
+    Literal.apply_subst_no_simp Subst.Renaming.none subst (lit, 0)
 
 (* merges two maps by union of their iters*)
 let merge_map_arg_iter (old_ty_args_1, new_ty_args_1) (old_ty_args_2, new_ty_args_2) =
@@ -236,8 +236,7 @@ let mono_step_clause mono_type_args_map poly_type_args_map literals =
     let new_mono_map_all, new_poly_map_all = apply_subst_map poly_type_args_map new_poly_subst old_poly_subst in
 
     (* truncationg the new type arguments according to the bounds *)
-    (* TODO, same function, to refactor*)
-    (* TODO, function unclear, seperate out*)
+    (* TODO, same function, to refactor and seperate *)
     let new_mono_map = 
         ArgMap.mapi (fun fun_sym iter -> iter_truncate (max_nb_mono (Iter.length (fst (ArgMap.find fun_sym mono_type_args_map)))) iter) new_mono_map_all
     in
@@ -246,12 +245,31 @@ let mono_step_clause mono_type_args_map poly_type_args_map literals =
     in
 
     (*apply the substitutions to the literals*)
-    let new_lits_iter = 
+    let new_lits_iter =
         Array.fold_left (fun acc lit -> Iter.union ~eq:Literal.equal acc (Iter.map (apply_subst_lit lit) subst_iter)) Iter.empty literals
     in
 
+    (* this renames variables to make sure that we don't have naming conflicts between the bound variables of the terms*)
+    (* the type casting below is vile, gaze upon this horror at your own risk, TODO refactor pending *)
+    let new_lits_vars_iter = Iter.fold (fun acc lit -> Iter.union ~eq:(HVar.equal Ty.equal) acc (Literal.Seq.vars lit)) Iter.empty new_lits_iter in
+    let new_lits_vars_list = Iter.to_list (Iter.sort_uniq ~cmp:(HVar.compare (fun ty_1 ty_2 -> Ty.compare ty_1 ty_2)) new_lits_vars_iter) in
+    let fresh_lits_vars = List.map (fun (var:Ty.t HVar.t) -> Term.var (HVar.fresh ~ty:(HVar.ty var) ())) new_lits_vars_list in
 
-    let new_lits_arr = Iter.to_array new_lits_iter in
+    let rename_vars_lit lit =
+        List.fold_left2 (fun acc_lit old_var fresh_var -> Literal.replace lit ~old:(Term.var old_var) ~by:fresh_var) lit new_lits_vars_list fresh_lits_vars
+    in
+    let new_lits_renamed = Iter.map rename_vars_lit new_lits_iter in
+
+    (*let rename_vars_subst =
+        List.fold_left2
+            (fun subst (old_var: Ty.t HVar.t) fresh_var -> 
+                if Subst.mem subst ((old_var:>InnerTerm.t HVar.t), 0) then (Printf.printf "happen often?\n"; Subst.update subst ((old_var:>InnerTerm.t HVar.t), 0) (fresh_var, 0))
+                else Subst.bind subst ((old_var:>InnerTerm.t HVar.t), 0) (fresh_var, 0)
+            Subst.empty new_lits_vars_list fresh_lits_vars
+    in
+
+    let new_lits_renamed = Iter.map (fun lit -> apply_subst_lit lit rename_vars_subst) new_lits_iter in*)
+    let new_lits_arr = Iter.to_array new_lits_renamed in
 
     (*returns the new_mono_map, new_poly_map and new_literals*)
     new_mono_map, new_poly_map, new_lits_arr 
@@ -296,7 +314,7 @@ let mono_step clause_list mono_map poly_clause_map =
         let mono_lits = Array.of_list (List.filter lit_is_monomorphic (Array.to_list new_literals)) in
 
         (* TODO make bound better *)
-        let max_arr_index = max 10 (1000 / (List.length clause_list)) in
+        let max_arr_index = max 10000 (1000 / (List.length clause_list)) in
         let mono_lits_truncated = Array.sub mono_lits 0 (min (Array.length mono_lits) max_arr_index) in
         
         new_lits := !new_lits + (Array.length mono_lits_truncated);
