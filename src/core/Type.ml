@@ -339,7 +339,7 @@ module TPTP = struct
   let pp_depth ?hooks:_ depth out t = pp_tstp_rec depth out t
 
   let rec pp_ho_depth depth out t = match view t with
-    | Builtin Prop -> Printf.printf "WHAHOO\n"; CCFormat.string out "$o"
+    | Builtin Prop -> CCFormat.string out "$o"
     | Builtin TType -> CCFormat.string out "$tType"
     | Builtin Term -> CCFormat.string out "$i"
     | Builtin Int -> CCFormat.string out "$int"
@@ -436,7 +436,12 @@ let mangle (ty:t): string =
   let add_id buf id =
     let s =
       ID.name id
-      |> CCString.filter (function '#' | '_' -> false | _ -> true)
+      (* TODO check with someone that knows what's going on if this wouldn't lead to 
+       * problems distinguishing between types like ex_1 ex__1, however removing "_" prevents errors for types
+       * like `to_int: $tType > $tType` because otherwise (int to_int) list would conflict with int > int list*)
+      (* TODO removing the "_" filter as a temporary measure*)
+      (*|> CCString.filter (function '#' | '_' -> false | _ -> true)*)
+      |> CCString.filter (function '#' -> false | _ -> true)
     in
     Buffer.add_string buf s
   in
@@ -445,8 +450,7 @@ let mangle (ty:t): string =
     | Builtin Int -> Buffer.add_string buf "int"
     | Builtin Rat -> Buffer.add_string buf "rat"
     | Builtin Real -> Buffer.add_string buf "real"
-    (*this was originally prop but props are represented with $o in the tptp syntax, TODO figure out what to do*)
-    | Builtin Prop -> Buffer.add_string buf "$o"
+    | Builtin Prop -> Buffer.add_string buf "o"
     | Builtin Term -> Buffer.add_string buf "i"
     | Var _ -> Buffer.add_string buf "_"
     | DB i -> Printf.bprintf buf "A%d" i
@@ -462,8 +466,6 @@ let mangle (ty:t): string =
   let buf = Buffer.create 32 in
   aux buf ty;
   Buffer.contents buf
-
-let pp_mangle out ty = CCFormat.string out (mangle ty)
 
 (** {2 Conversions} *)
 

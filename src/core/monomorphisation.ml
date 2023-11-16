@@ -16,9 +16,6 @@ module ClauseArgMap = Map.Make(Int)
 
 (* TODO make a neat little module with a decent interface *)
 (* TODO massive refactor once we get this working*)
-(* TODO find more efficient data structures for this process, iter are easy to manipulate but sets might 
- * probably be more appropriate *)
-(* TODO mangle all the types *)
 (* TODO make parameters proportional*)
 (* TODO remove literals with uninstantiable type variables *)
 (* TODO rewrite typed_sym to get rid of all the junk*)
@@ -27,9 +24,11 @@ module ClauseArgMap = Map.Make(Int)
 (* TODO write nice documentation and comments *)
 (* TODO CI tests *)
 (* TODO create function to order type arguments for heuristic truncation *)
-(* TODO preliminary tests *)
+(* TODO unit tests *)
+(* TODO integration tests *)
 (* TODO squash all commits and make the necessary rebase so that this can be added to the main zipperposition branch*)
 (* TODO check if a newly generated type already exists and don't add it to new in that case *)
+(* TODO clean the mangling implementation *)
 
 (* Iter.union needs to be provided an equality function when dealing with lists of types *)
 let ty_arg_eq ty_arg1 ty_arg2 = List.for_all Fun.id (List.map2 Ty.equal ty_arg1 ty_arg2)
@@ -455,18 +454,16 @@ let monomorphise_problem clause_list loop_count =
  * all fun int bool by fun_int_bool ect ...*)
 
 let rec convert_type ty = 
-    let args = Ty.expected_args ty in
-    let ret = Ty.returns ty in
+    let open Ty in
+    let args = expected_args ty in
+    let ret = returns ty in
     if args != [] then
-        let open Ty in
         (List.map convert_type args) ==> (convert_type ret)
-    else Ty.const (ID.make (Ty.mangle ty))
+    else match view ty with
+        | Builtin _ -> ty 
+        (* TODO this is a temporary fix, need to find better solution, ties in to the mangle problem*)
+        | _ -> Ty.const (ID.make (Ty.mangle ty))
 
-
-
-let convert_lit lit =
-    let tst_lit = Literal.Conv.lit_to_tst lit in
-    ()
 
 (* converts the given iter of literals to simple terms with mangled types*)
 (* my attempted way to do this is to use the existing conversion functions except
