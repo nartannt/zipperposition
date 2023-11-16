@@ -250,25 +250,15 @@ let mono_step_clause mono_type_args_map poly_type_args_map literals =
     in
 
     (* this renames variables to make sure that we don't have naming conflicts between the bound variables of the terms*)
-    (* the type casting below is vile, gaze upon this horror at your own risk, TODO refactor pending *)
     let new_lits_vars_iter = Iter.fold (fun acc lit -> Iter.union ~eq:(HVar.equal Ty.equal) acc (Literal.Seq.vars lit)) Iter.empty new_lits_iter in
-    let new_lits_vars_list = Iter.to_list (Iter.sort_uniq ~cmp:(HVar.compare (fun ty_1 ty_2 -> Ty.compare ty_1 ty_2)) new_lits_vars_iter) in
-    let fresh_lits_vars = List.map (fun (var:Ty.t HVar.t) -> Term.var (HVar.fresh ~ty:(HVar.ty var) ())) new_lits_vars_list in
+    let new_lits_vars_list = Iter.to_list (Iter.filter (fun var -> not (Ty.is_tType (HVar.ty var))) new_lits_vars_iter) in
+    let fresh_lits_vars = List.map (fun var -> Term.var (HVar.fresh ~ty:(HVar.ty var) ())) new_lits_vars_list in
 
     let rename_vars_lit lit =
-        List.fold_left2 (fun acc_lit old_var fresh_var -> Literal.replace lit ~old:(Term.var old_var) ~by:fresh_var) lit new_lits_vars_list fresh_lits_vars
+        List.fold_left2 (fun acc_lit old_var fresh_var -> Literal.replace acc_lit ~old:(Term.var old_var) ~by:fresh_var) lit new_lits_vars_list fresh_lits_vars
     in
     let new_lits_renamed = Iter.map rename_vars_lit new_lits_iter in
 
-    (*let rename_vars_subst =
-        List.fold_left2
-            (fun subst (old_var: Ty.t HVar.t) fresh_var -> 
-                if Subst.mem subst ((old_var:>InnerTerm.t HVar.t), 0) then (Printf.printf "happen often?\n"; Subst.update subst ((old_var:>InnerTerm.t HVar.t), 0) (fresh_var, 0))
-                else Subst.bind subst ((old_var:>InnerTerm.t HVar.t), 0) (fresh_var, 0)
-            Subst.empty new_lits_vars_list fresh_lits_vars
-    in
-
-    let new_lits_renamed = Iter.map (fun lit -> apply_subst_lit lit rename_vars_subst) new_lits_iter in*)
     let new_lits_arr = Iter.to_array new_lits_renamed in
 
     (*returns the new_mono_map, new_poly_map and new_literals*)

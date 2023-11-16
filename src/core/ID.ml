@@ -75,6 +75,9 @@ let pp_full out id = Format.fprintf out "%s/%d" id.name id.id
 let pp_fullc = pp_full
 
 let pp_tstp out id =
+  (* TODO extremely temporary, purely for hacking something together for debugging*)
+  if id.name = "$o" || id.name = "o" then CCFormat.string out id.name
+  else
   if Util.tstp_needs_escaping id.name
   then CCFormat.fprintf out "'%s'" id.name
   else CCFormat.string out id.name

@@ -735,7 +735,8 @@ module Ty = struct
       | Ty_builtin Int -> Buffer.add_string buf "int"
       | Ty_builtin Rat -> Buffer.add_string buf "rat"
       | Ty_builtin Real -> Buffer.add_string buf "real"
-      | Ty_builtin Prop -> Buffer.add_string buf "prop"
+      (*this was originally prop but props are represented with $o in the tptp syntax, TODO figure out what to do*)
+      | Ty_builtin Prop -> Printf.printf "This shouldn't print\n"; Buffer.add_string buf "o"
       | Ty_builtin Term -> Buffer.add_string buf "i"
       | Ty_var v -> add_id buf (Var.id v)
       | Ty_app (f,[]) -> add_id buf f

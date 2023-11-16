@@ -199,7 +199,6 @@ module Make(E : Env.S) : S with module Env = E = struct
     match !e_bin with 
     | Some e_path ->
       let to_ = !_timeout in
-      Printf.printf "why is this not before all that?\n";
       let cmd = 
         CCFormat.sprintf "timeout %d %s --pos-ext=all --neg-ext=all %s --cpu-limit=%d %s -s -p" 
           (to_+2) e_path prob_path to_ (if !_e_auto then "--auto" else "--auto-schedule") in
@@ -208,7 +207,6 @@ module Make(E : Env.S) : S with module Env = E = struct
       let res = 
       (try 
           while not !refutation_found do 
-            Printf.printf "Still good?\n\n";
             let line = input_line process_channel in
             (*Printf.printf "%s\n" line;*)
             if Str.string_match regex_refutation_begin line 0 then 
@@ -234,11 +232,9 @@ module Make(E : Env.S) : S with module Env = E = struct
                 Some !clause_ids)
           ) else None
         with End_of_file ->
-            Printf.printf "here i'm guessing\n";
             None)
       in
       close_in process_channel;
-      Printf.printf "huh\n";
       res
     | None ->
       invalid_arg "cannot run E if E binary is not set up"

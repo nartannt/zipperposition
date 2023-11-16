@@ -339,7 +339,7 @@ module TPTP = struct
   let pp_depth ?hooks:_ depth out t = pp_tstp_rec depth out t
 
   let rec pp_ho_depth depth out t = match view t with
-    | Builtin Prop -> CCFormat.string out "$o"
+    | Builtin Prop -> Printf.printf "WHAHOO\n"; CCFormat.string out "$o"
     | Builtin TType -> CCFormat.string out "$tType"
     | Builtin Term -> CCFormat.string out "$i"
     | Builtin Int -> CCFormat.string out "$int"
@@ -445,7 +445,8 @@ let mangle (ty:t): string =
     | Builtin Int -> Buffer.add_string buf "int"
     | Builtin Rat -> Buffer.add_string buf "rat"
     | Builtin Real -> Buffer.add_string buf "real"
-    | Builtin Prop -> Buffer.add_string buf "prop"
+    (*this was originally prop but props are represented with $o in the tptp syntax, TODO figure out what to do*)
+    | Builtin Prop -> Buffer.add_string buf "$o"
     | Builtin Term -> Buffer.add_string buf "i"
     | Var _ -> Buffer.add_string buf "_"
     | DB i -> Printf.bprintf buf "A%d" i

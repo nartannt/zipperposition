@@ -74,4 +74,5 @@ target/streams/compile/unmanagedJars/$global/streams/export
 test-cached
 eprover-ho
 portfolio/tmp
+res/
 result
