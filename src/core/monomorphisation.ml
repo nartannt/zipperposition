@@ -438,6 +438,9 @@ let monomorphise_problem clause_list loop_count =
     in
 
     let mono_clause_list_res =
+        (* making a commit of this because i need a trace of how stupid i am
+         * what i'm doing here is removing all the non-momomorphic literals from clauses, however clauses are disjunctions
+         * so i've just been arbitrarily removing disjuncts willy-nilly this whole time, this has naturally led to soundness issues*)
         (* very ugly to change with refactoring *)
         let mono_clauses = List.map (fun (clause_id, lit_arr) -> clause_id, Array.of_list (List.filter lit_is_monomorphic (Array.to_list lit_arr))) clause_list_res in
         let mono_clauses_no_empty = List.filter (fun (_, lit_arr) -> Array.to_list lit_arr != []) mono_clauses in
