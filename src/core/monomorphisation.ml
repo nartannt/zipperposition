@@ -17,7 +17,7 @@ module ClauseArgMap = Map.Make(Int)
 (* TODO make a neat little module with a decent interface *)
 (* TODO massive refactor once we get this working*)
 (* TODO make parameters proportional*)
-(* TODO remove literals with uninstantiable type variables *)
+(* TODO remove clauses with literals with uninstantiable type variables *)
 (* TODO rewrite typed_sym to get rid of all the junk*)
 (* TODO rewrite final monomorphic filtering more elegantly*)
 (* TODO remove useless prints *)
@@ -196,16 +196,16 @@ let mono_step_clause mono_type_args_map poly_type_args_map literals =
     (* the bounds that we want to establish *)
 
     (* how many new mono type args we allow to be derived from each clause, relative and hard cap*)
-    let new_mono_per_clause_rel = 1.5 in
-    let new_mono_per_clause_abs = 1000 in
+    let new_mono_per_clause_rel = 1.2 in
+    let new_mono_per_clause_abs = 50 in
     (* the relative floor is for the cases where the relative proportion is too low to yield any new
      * clauses (ie: we have 10 type arguments but a limit of 0.05, then mono_rel_floor type arguments are
      * allowed instead of 0) still capped by the abs cap*)
-    let mono_rel_floor = 2 in
+    let mono_rel_floor = 1 in
     (* same as for the monomorphic bounds *)
-    let new_poly_per_clause_rel = 1.5 in
-    let new_poly_per_clause_abs = 1000 in
-    let poly_rel_floor = 2 in
+    let new_poly_per_clause_rel = 1.2 in
+    let new_poly_per_clause_abs = 50 in
+    let poly_rel_floor = 1 in
 
 
     (* TODO same function to refactor*)
@@ -218,17 +218,18 @@ let mono_step_clause mono_type_args_map poly_type_args_map literals =
         min new_poly_per_clause_abs (max poly_rel_floor rel_int)
     in
 
-
     (*generate all substitutions from mono and poly type arguments*)
     let new_poly_subst_all, old_poly_subst_all = derive_type_arg_subst mono_type_args_map poly_type_args_map in
 
     let total_subst_nb = (Iter.length new_poly_subst_all) + (Iter.length old_poly_subst_all) in
     
     (* TODO parametrise bound find some reasonable way to order the subst iter such that truncating makes sense*)
-    let truncate_nb = min (max 5 (int_of_float (float_of_int total_subst_nb *. 0.1))) 5 in
+    let subst_rel_floor = 1 in
+    let subst_abs_max = 50 in
+    let subst_rel_max = 1.1 in
+    let truncate_nb = min subst_abs_max (max subst_rel_floor (int_of_float (float_of_int total_subst_nb *. subst_rel_max))) in
     let new_poly_subst, old_poly_subst = iter_truncate truncate_nb new_poly_subst_all, iter_truncate truncate_nb old_poly_subst_all in
     let subst_iter = iter_subst_union new_poly_subst old_poly_subst in
-
 
     (*apply the substitutions to the poly type arguments*)
     (*split them into the new_mono and new_poly type arguments*)
@@ -260,8 +261,15 @@ let mono_step_clause mono_type_args_map poly_type_args_map literals =
 
     let new_lits_arr = Iter.to_array new_lits_renamed in
 
+    let lit_is_monomorphic = function
+        | Literal.Equation (lt, rt, _) -> T.monomorphic lt && T.monomorphic rt
+        | _ -> true
+    in
+    let new_arr_mono = Array.for_all lit_is_monomorphic new_lits_arr in
+
+
     (*returns the new_mono_map, new_poly_map and new_literals*)
-    new_mono_map, new_poly_map, new_lits_arr 
+    new_mono_map, new_poly_map, if new_arr_mono then new_lits_arr else [||]
 
 
 let print_all_type_args fun_sym iter =
@@ -294,21 +302,11 @@ let mono_step clause_list mono_map poly_clause_map =
          * ones will be overwritten*)
         let res_poly_clause_map = ClauseArgMap.add clause_id new_poly_map acc_poly_clause_map in
 
-        let lit_is_monomorphic = function
-            | Literal.Equation (lt, rt, _) -> T.monomorphic lt && T.monomorphic rt
-            | _ -> true
-        in
-        (*only add monomorphic literals, we already generate the new types ourselves and we will
-         * filter out non-monomorphic literals at the end anyways*)
-        let mono_lits = Array.of_list (List.filter lit_is_monomorphic (Array.to_list new_literals)) in
 
-        (* TODO make bound better *)
-        let max_arr_index = max 10000 (1000 / (List.length clause_list)) in
-        let mono_lits_truncated = Array.sub mono_lits 0 (min (Array.length mono_lits) max_arr_index) in
         
-        new_lits := !new_lits + (Array.length mono_lits_truncated);
+        new_lits := !new_lits + (Array.length new_literals);
 
-        ((clause_id, mono_lits_truncated)::acc_clauses, res_mono_map, res_poly_clause_map)
+        ((clause_id, new_literals)::acc_clauses, res_mono_map, res_poly_clause_map)
     in
     let new_clauses, new_mono_map, new_poly_clause_map = 
         List.fold_left process_clause ([], ArgMap.empty, ClauseArgMap.empty) clause_list
@@ -412,14 +410,14 @@ let monomorphise_problem clause_list loop_count =
     (* remove duplicates *)
     let init_mono_map = ArgMap.map (fun (old_iter, new_iter) -> Iter.sort_uniq old_iter, Iter.sort_uniq new_iter) init_mono_map in
 
-    (* another check due to a later find*)
+    (* another check due to a later Map.find*)
     (assert (List.for_all (fun (clause_id, _) -> ClauseArgMap.find_opt clause_id init_clause_poly_map != None) clause_list));
     (assert (ClauseArgMap.for_all (fun _ poly_map -> ArgMap.for_all (fun key _ -> ArgMap.find_opt key init_mono_map != None) poly_map ) init_clause_poly_map));
 
     (* monomorphisation loop *)
     let rec monomorphisation_loop curr_count mono_map poly_clause_map clause_list =
         let mono_map = ArgMap.map (fun (new_iter, old_iter) -> Iter.sort_uniq new_iter, Iter.sort_uniq old_iter) mono_map in
-        Printf.printf "we have %i total type args\n" (ArgMap.fold (fun _ (old_iter, new_iter) acc -> (Iter.length old_iter) + (Iter.length new_iter) + acc) mono_map 0);
+        Printf.printf "we have %i total monomorphic type args\n" (ArgMap.fold (fun _ (old_iter, new_iter) acc -> (Iter.length old_iter) + (Iter.length new_iter) + acc) mono_map 0);
         if curr_count <= 0 then mono_map, poly_clause_map, clause_list
         else
             (* given that the maps are updated independently of the clause list, we could not pass the udpated
@@ -438,18 +436,13 @@ let monomorphise_problem clause_list loop_count =
     in
 
     let mono_clause_list_res =
-        (* making a commit of this because i need a trace of how stupid i am
-         * what i'm doing here is removing all the non-momomorphic literals from clauses, however clauses are disjunctions
-         * so i've just been arbitrarily removing disjuncts willy-nilly this whole time, this has naturally led to soundness issues*)
-        (* very ugly to change with refactoring *)
-        let mono_clauses = List.map (fun (clause_id, lit_arr) -> clause_id, Array.of_list (List.filter lit_is_monomorphic (Array.to_list lit_arr))) clause_list_res in
+        let mono_clauses = List.filter (fun (clause_id, lit_arr) -> Array.for_all lit_is_monomorphic lit_arr) clause_list_res in
         let mono_clauses_no_empty = List.filter (fun (_, lit_arr) -> Array.to_list lit_arr != []) mono_clauses in
+        Printf.printf "We have lost %i clauses\n" (List.length clause_list_res - List.length mono_clauses);
         mono_clauses_no_empty
     in
 
-    let lits_replace = Array.map (fun _ -> Literal.mk_absurd) in
-    let crap_clauses = List.map (fun (clause_id, lits) -> clause_id, lits_replace lits) mono_clause_list_res in
-    Printf.printf "We end up with a grand total of ... %i clauses!\n" (List.length crap_clauses);
+
     mono_clause_list_res
 
 (* We're not done yet, because even though we have monomorphised the clauses, they still make use of polymorphic type constructors which can't be handled by e 

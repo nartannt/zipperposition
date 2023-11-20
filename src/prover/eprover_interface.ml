@@ -343,8 +343,8 @@ module Make(E : Env.S) : S with module Env = E = struct
       let initial = Iter.to_list (Iter.join ~join_row:reconstruct_clause monomorphised_iter (Iter.of_list poly_initial) ) in
       Printf.printf "we currently HAVE %i THIS many intial clauses\n" (List.length initial);
 
-      Iter.iter (fun cl -> Printf.printf "we have this clause: %s \n" (C.to_string cl)) (Iter.append (Iter.append active_set passive_set) (Iter.of_list initial));
-      Iter.iter (fun cl -> Printf.printf "initial clauses: %s \n" (C.to_string cl)) (Iter.append (Iter.append poly_active_set poly_passive_set) (Iter.of_list poly_initial));
+      (*Iter.iter (fun cl -> Printf.printf "we have this clause: %s \n" (C.to_string cl)) (Iter.append (Iter.append active_set passive_set) (Iter.of_list initial));*)
+      (*Iter.iter (fun cl -> Printf.printf "\ninitial clauses: %s \n" (C.to_string cl)) (Iter.append (Iter.append poly_active_set poly_passive_set) (Iter.of_list poly_initial));*)
 
       let _, ho_clauses = 
         take_ho_clauses ~encoded_symbols ~converter (Iter.append active_set passive_set) in
