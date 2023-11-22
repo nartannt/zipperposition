@@ -115,11 +115,9 @@ val map : (term -> term) -> t -> t
 val filter : (var Scoped.t -> term Scoped.t -> bool) -> t -> t
 (** Filter bindings *)
 
-(*
 val compose : t -> t -> t
   (** [compose s1 s2] is the substitution that to [x] associates
       [s1 (s2 x)]. *)
-*)
 
 val is_renaming : t -> bool
 (** Check whether the substitution is a variable renaming *)

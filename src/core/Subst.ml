@@ -133,9 +133,12 @@ let merge s1 s2 =
          else raise (InconsistentBinding (v, t1, t2)))
     s1 s2
 
-(*
-let compose s1 s2 = failwith "Subst.compose: not implemented"
-*)
+(* TODO check with someone who knows the code that this implementation is correct*)
+(* Maybe add label to make it explicit that *)
+let compose s1 s2 =
+    let s_iter1 = M.to_iter s1 in
+    let s_iter2 = M.to_iter s2 in
+    M.of_iter (Iter.append s_iter2 (Iter.filter (fun (sc_var, _) -> not (M.mem sc_var s2)) s_iter1))
 
 let fold f acc subst =
   M.fold (fun v t acc -> f acc v t) subst acc
