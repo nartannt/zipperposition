@@ -75,4 +75,6 @@ test-cached
 eprover-ho
 portfolio/tmp
 res/
+perf.data*
+soundness_tests/
 result

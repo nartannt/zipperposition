@@ -134,10 +134,10 @@ module Make(E : Env.S) : S with module Env = E = struct
 
   let output_cl ~out clause =
     let lits_converted = Literals.Conv.to_tst (C.lits clause) in
-    Format.fprintf out "%% %d:\n" (C.proof_depth clause);
-    let orig_cl_str = CCFormat.sprintf "%% @[%a@]@." C.pp_tstp clause in
-    let commented = CCString.replace ~which:`All ~sub:"\n" ~by:"\n% " orig_cl_str in
-    Format.fprintf out "%% orig:@.@[%s@]@." commented;
+    (*Format.fprintf out "%% %d:\n" (C.proof_depth clause);*)
+    (*let orig_cl_str = CCFormat.sprintf "%% @[%a@]@." C.pp_tstp clause in*)
+    (*let commented = CCString.replace ~which:`All ~sub:"\n" ~by:"\n% " orig_cl_str in*)
+    (*Format.fprintf out "%% orig:@.@[%s@]@." commented;*)
     match (C.distance_to_goal clause) with 
     | Some d when d = 0 ->
       Format.fprintf out "@[thf(zip_cl_%d,negated_conjecture,@[%a@]).@]@\n"
@@ -290,7 +290,8 @@ module Make(E : Env.S) : S with module Env = E = struct
         let pd1 = C.proof_depth c1 and pd2 = C.proof_depth c2 in
         if pd1 = pd2 || !_sort_by_weight_only then CCInt.compare (C.ho_weight c1) (C.ho_weight c2)
         else CCInt.compare pd1 pd2)
-      |> Iter.take !_max_derived
+      (* TODO ask why this was orginally 16*)
+      |> Iter.take 10000000000 (*!_max_derived*)
       |> convert_clauses ~converter ~encoded_symbols
     in
       
@@ -333,30 +334,32 @@ module Make(E : Env.S) : S with module Env = E = struct
       let clause_list = Iter.to_list (Iter.union ~eq:C.equal (Iter.of_list poly_initial) (Iter.union ~eq:C.equal poly_active_set poly_passive_set)) in
       let simple_clause_list = List.map (fun cl -> C.id cl, C.lits cl) clause_list in
       let monomorphised_clauses = Monomorphisation.monomorphise_problem simple_clause_list 5 in
+      (*Printf.printf "EProver intf clause nb %i\n" (List.length monomorphised_clauses);*)
       let monomorphised_iter = Iter.of_list monomorphised_clauses in
 
       let active_set = Iter.join ~join_row:reconstruct_clause monomorphised_iter poly_active_set in 
       let passive_set = Iter.join ~join_row:reconstruct_clause monomorphised_iter poly_passive_set in 
-      Printf.printf "new passive set counts %i clauses, new active set counts %i clauses\n" (Iter.length active_set) (Iter.length passive_set);
-      Printf.printf "initial passive set counts %i clauses, initial active set counts %i clauses\n" (Iter.length poly_active_set) (Iter.length poly_passive_set);
+      (*Printf.printf "new passive set counts %i clauses, new active set counts %i clauses\n" (Iter.length active_set) (Iter.length passive_set);*)
+      (*Printf.printf "initial passive set counts %i clauses, initial active set counts %i clauses\n" (Iter.length poly_active_set) (Iter.length poly_passive_set);*)
       (*no need to apply mangle conversion to initial because we do it later, will need to be cleaned up TODO*)
       let initial = Iter.to_list (Iter.join ~join_row:reconstruct_clause monomorphised_iter (Iter.of_list poly_initial) ) in
-      Printf.printf "we currently HAVE %i THIS many intial clauses\n" (List.length initial);
+      (*Printf.printf "we currently HAVE THIS %i many passive and active clauses \n" (Iter.length active_set + Iter.length passive_set);*)
 
       (*Iter.iter (fun cl -> Printf.printf "we have this clause: %s \n" (C.to_string cl)) (Iter.append (Iter.append active_set passive_set) (Iter.of_list initial));*)
       (*Iter.iter (fun cl -> Printf.printf "\ninitial clauses: %s \n" (C.to_string cl)) (Iter.append (Iter.append poly_active_set poly_passive_set) (Iter.of_list poly_initial));*)
 
       let _, ho_clauses = 
         take_ho_clauses ~encoded_symbols ~converter (Iter.append active_set passive_set) in
-      Printf.printf "new initital clause nb: %i\n" (List.length poly_initial);
-      Printf.printf "initial initital clause nb: %i\n" (List.length poly_initial);
+
+      (*Printf.printf "new initital clause nb: %i\n" (List.length poly_initial);*)
+      (*Printf.printf "initial initital clause nb: %i\n" (List.length poly_initial);*)
       (*let mangle_clause cl =
           let mangled_lits = Array.map (fun lit -> Literal.map Term.mangle_term lit) (C.lits cl) in
           reconstruct_clause (C.id cl, mangled_lits) cl
       in
       let ho_clauses = List.filter_map mangle_clause ho_clauses in*)
 
-      Printf.printf "ho clause nb: %i\n" (List.length ho_clauses);
+      (*Printf.printf "ho clause nb: %i\n" (List.length ho_clauses);*)
       (*List.iter (fun cl -> Printf.printf "this clause has taken its toll, wohoh i know she said [Polymorphism Detected] too many times before wohohoh: %s\n" (C.to_string_tstp cl)) ho_clauses;*)
       let already_defined = output_all ~out initial in
       Format.fprintf out "%% -- PASSIVE -- \n";
@@ -365,7 +368,7 @@ module Make(E : Env.S) : S with module Env = E = struct
       let cl_set = initial @ ho_clauses in
 
       let res = 
-        FileUtil.cp [prob_name] FilePath.current_dir;
+        (*FileUtil.cp [prob_name] FilePath.current_dir;*)
         match run_e prob_name with
         | Some ids ->
           Printf.printf "\nwe got something?\n";
