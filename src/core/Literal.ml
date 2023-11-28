@@ -211,9 +211,7 @@ let mk_absurd = False
 let mk_constraint l r = mk_neq l r
 
 module Seq = struct
-  let terms lit k = 
-      Printf.printf "ping\n";
-      match lit with
+  let terms lit k = match lit with
     | Equation(l, r, _) -> k l; k r
     | True | False -> ()
 
