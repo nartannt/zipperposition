@@ -89,20 +89,20 @@ let apply_subst_lit lit subst =
 
 
 exception NotAType
-let rec apply_ty_subst_term_mine term subst =
-    let subst_as_iter = Subst.to_iter subst in
+let rec apply_ty_subst_term_mine term subst_as_iter =
     let new_subst = match Term.view term with
         | Term.DB _ -> term
         | Term.Const _ -> term
         | Term.Fun _ -> raise NotAType
-        | Term.App (f, args) -> Term.app (apply_ty_subst_term_mine f subst) (List.map (fun arg -> apply_ty_subst_term_mine arg subst) args)
+        | Term.App (f, args) -> Term.app (apply_ty_subst_term_mine f subst_as_iter) (List.map (fun arg -> apply_ty_subst_term_mine arg subst_as_iter) args)
         | Term.AppBuiltin (b, args) ->
                 (*make it an exception*)
                 assert ((Term.ty term) = Type.tType);
-                Term.app_builtin ~ty:(Type.tType) b (List.map (fun arg -> apply_ty_subst_term_mine arg subst) args)
+                Term.app_builtin ~ty:(Type.tType) b (List.map (fun arg -> apply_ty_subst_term_mine arg subst_as_iter) args)
         | _ -> term
     in
-    term
+    new_subst
+
         
 
 (* merges two maps by union of their iters*)
