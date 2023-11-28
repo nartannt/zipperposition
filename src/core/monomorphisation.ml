@@ -103,7 +103,15 @@ let rec apply_ty_subst_term_mine term subst_as_iter =
     in
     new_subst
 
-        
+
+let apply_ty_subst_lit_mine lit subst =
+    let subst_as_iter = Subst.to_iter subst in
+    match lit with
+        | Literal.Equation (lt, rt, sign) ->
+                let new_lt = apply_ty_subst_term_mine lt subst_as_iter in
+                let new_rt = apply_ty_subst_term_mine rt subst_as_iter in
+                Literal.mk_lit new_lt new_rt sign
+        | _ -> lit
 
 (* merges two maps by union of their iters*)
 let merge_map_arg_iter (old_ty_args_1, new_ty_args_1) (old_ty_args_2, new_ty_args_2) =
