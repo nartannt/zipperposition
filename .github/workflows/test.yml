@@ -30,7 +30,5 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: sudo apt install nix
-      - run: sudo nix develop --experimental-features 'nix-command flakes'
-      - run: make
-      - run: make clean
+      - run: sudo nix build --experimental-features 'nix-command flakes'
       - run: make test
