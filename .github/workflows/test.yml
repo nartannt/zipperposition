@@ -5,7 +5,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - run: apt install nix
+      - run: sudo apt install nix
       - run: nix develop  --experimental-features 'nix-command flakes'
       - run: make
       - run: make clean
