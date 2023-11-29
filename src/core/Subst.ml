@@ -254,6 +254,7 @@ let apply_aux ~sv subst ~f_rename t sc =
             | T.Var v ->
               (* the most interesting cases!
                  switch depending on whether [t] is bound by [subst] or not *)
+              (* TODO understand why find_exn rather than find and match on option *)
               begin match find_exn subst (v,sc_t) with
                 | (t',sc') ->
                   (* NOTE: if [t'] is not closed, we assume that it
