@@ -90,18 +90,26 @@ let apply_subst_lit lit subst =
 
 exception NotAType
 let rec apply_ty_subst_term_mine term subst_as_iter =
-    let new_subst = match Term.view term with
+    let new_term = match Term.view term with
         | Term.DB _ -> term
         | Term.Const _ -> term
-        | Term.Fun _ -> raise NotAType
         | Term.App (f, args) -> Term.app (apply_ty_subst_term_mine f subst_as_iter) (List.map (fun arg -> apply_ty_subst_term_mine arg subst_as_iter) args)
+        (* some of my ugliest work yet *)
+        | Term.Fun (ty, t) -> Term.fun_ (Ty.of_term_unsafe ((apply_ty_subst_term_mine (Term.of_term_unsafe (ty:>InnerTerm.t)) subst_as_iter):>InnerTerm.t)) (apply_ty_subst_term_mine t subst_as_iter)
         | Term.AppBuiltin (b, args) ->
-                (*make it an exception*)
-                assert ((Term.ty term) = Type.tType);
-                Term.app_builtin ~ty:(Type.tType) b (List.map (fun arg -> apply_ty_subst_term_mine arg subst_as_iter) args)
-        | _ -> term
+                Term.app_builtin ~ty:(Term.ty term) b (List.map (fun arg -> apply_ty_subst_term_mine arg subst_as_iter) args)
+        | Term.Var ty_var -> 
+                if Term.is_type term then
+                    let find_new_type ((ty_var', _), (new_ty, _)) =
+                        if HVar.equal InnerTerm.equal (ty_var:>InnerTerm.t HVar.t) ty_var' then Some new_ty
+                        else None
+                    in
+                    match Iter.find_map find_new_type subst_as_iter with
+                        | Some new_ty -> Term.of_term_unsafe new_ty
+                        | None -> term
+                else term
     in
-    new_subst
+    new_term 
 
 
 let apply_ty_subst_lit_mine lit subst =
@@ -349,7 +357,7 @@ let mono_step_clause mono_type_args_map poly_type_args_map literals bounds =
             Iter.uniq ~eq:Subst.equal (generate_monomorphising_subst selected_subst vars_to_instantiate bounds.monomorphising_subst) in
     (*Printf.printf "We have %i monomorphising substitutions\n" (Iter.length monomorphising_subst);*)
 
-    let new_lits_iter_all = Iter.map (fun subst -> Array.map (fun lit -> apply_subst_lit lit subst) literals) monomorphising_subst in
+    let new_lits_iter_all = Iter.map (fun subst -> Array.map (fun lit -> apply_ty_subst_lit_mine lit subst) literals) monomorphising_subst in
 
     let lit_arr_eq = Array.for_all2 Literal.equal in
     
@@ -549,7 +557,8 @@ let monomorphise_problem clause_list loop_count =
             (* given that the maps are updated independently of the clause list, we could not pass the udpated
              clauses as parameter, however, it is convienient to do so*)
             let new_clauses, new_mono_map, new_poly_clause_map = mono_step poly_clause_list mono_map poly_clause_map all_bounds in
-            monomorphisation_loop (curr_count-1) new_mono_map new_poly_clause_map (new_clauses@new_clause_acc)
+            let res = monomorphisation_loop (curr_count-1) new_mono_map new_poly_clause_map (new_clauses@new_clause_acc) in
+            res
     in
 
     (* resulting clause_list with updated literals *)
@@ -557,6 +566,7 @@ let monomorphise_problem clause_list loop_count =
         monomorphisation_loop loop_count init_mono_map init_clause_poly_map poly_clause_list in
 
     Printf.printf "We end with %i clauses\n" (List.length clause_list_res);
+    Printf.printf "generating clauses %f\n" (Sys.time() -. !begin_time);
 
 
     let mono_clause_list_res =
