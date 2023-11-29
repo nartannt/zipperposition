@@ -3,7 +3,7 @@ on:
 
 jobs:
   build:
-    runs-on: debian-latest
+    runs-on: ubuntu-latest
     steps:
       - run: apt install nix
       - run: nix develop  --experimental-features 'nix-command flakes'
