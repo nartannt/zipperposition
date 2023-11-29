@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: sudo apt install nix
-      - run: ls
+      - run: cat flake.nix
       - run: sudo nix develop  --experimental-features 'nix-command flakes'
       - run: make
       - run: make clean
