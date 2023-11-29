@@ -28,8 +28,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
       - run: sudo apt install nix
-      - run: echo tree
       - run: sudo nix develop --experimental-features 'nix-command flakes'
       - run: make
       - run: make clean
