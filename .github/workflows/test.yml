@@ -1,11 +1,12 @@
 on: 
   push:
-    jobs:
-      build:
-        runs-on: debian-latest
-        steps:
-          - apt install nix
-          - nix develop  --experimental-features 'nix-command flakes'
-          - make
-          - make clean
-          - make test
+
+jobs:
+  build:
+    runs-on: debian-latest
+    steps:
+      - run: apt install nix
+      - run: nix develop  --experimental-features 'nix-command flakes'
+      - run: make
+      - run: make clean
+      - run: make test
