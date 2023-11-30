@@ -11,20 +11,19 @@ module TypeSet = Ty.Set
 
 module ArgMap = Map.Make(ID)
 module ClauseArgMap = Map.Make(Int)
+module SubstMap = Map.Make(Int)
+module PbSubstMap = Map.Make(Int)
 
 (* Note: for ease of notation, variables, functions ... use "polymorphic" in the sense of "non-monomorphic" *)
 
 (* TODO make a neat little module with an elegant interface *)
 (* TODO massive refactor once we get this working*)
-(* TODO handle bound nicely *)
-(* TODO rewrite typed_sym to get rid of all the junk*)
-(* TODO rewrite final monomorphic filtering more elegantly*)
 (* TODO write nice documentation and comments *)
+(* TODO add option to choose substitutions semi-randomly*)
+(* TODO clean up interface with the rest of the prover*)
 (* TODO unit tests *)
 (* TODO integration tests *)
 (* TODO squash all commits and make the necessary rebase so that this can be added to the main zipperposition branch*)
-(* TODO check if a newly generated type already exists and don't add it to new in that case *)
-(* TODO rewrite implementation to handle clause instantiation *)
 
 type basic_bounds = {
     relative_bound : float;
@@ -37,6 +36,7 @@ type all_bounds = {
     poly_clause : basic_bounds;
     subst_per_ty_var : int;
     monomorphising_subst : int;
+    new_clauses_relative_bound : float;
 }
 
 let begin_time = ref 0.0
@@ -53,12 +53,12 @@ let is_not_meta ty =
     not (Type.Seq.sub ty |> Iter.exists Type.is_tType)
 
 (* the given type is not meta and requires no type arguments*)
+(*relation with ground?*)
 let is_instantiated ty =
     (List.for_all is_not_meta (Ty.expected_args ty)) && Ty.expected_ty_vars ty = 0
 
 (* returns the substitution that allows matching a monomorphic type against a type *)
 let match_type ty ~mono_type =
-    (* TODO understand this i have no idea what the scopes do precisely *)
     Unif.Ty.matching_same_scope ~pattern:ty mono_type ~scope:0
 
 (* returns an (ID, type list) iter that represent the function symbols and their type arguments that 
@@ -97,7 +97,7 @@ let iter_subst_union = Iter.union ~eq:Subst.equal ~hash:Subst.hash
 
 (* takes a list of monomorphic types
  * takes a list of polymorphic types
- * returns a set (iter for now) of type substitutions that match the 
+ * returns an iter of type substitutions that match the 
  * polymorphic types to the monomorphic types one by one 
  * expects the list to be of the same length *)
 let type_arg_list_subst type_list_poly type_list_mono =
@@ -110,32 +110,22 @@ let type_arg_list_subst type_list_poly type_list_mono =
     List.fold_left2 combine Iter.empty type_list_mono type_list_poly
 
 
+(* given a basic bound and the size of whatever object we are bounding
+ * returns the numbers of elements to keep*)
 let max_nb len bound =
     let rel_cap = int_of_float (float_of_int len *. bound.relative_bound) in
     min bound.absolute_cap (max bound.relative_floor rel_cap)
 
 (* takes a map of function symbols to monomorphic type arguments
  * takes a map of function symbols to polymorphic type arguments
- * returns a set (iter for now) of the type substitutions that can be derived from the given maps *)
-let derive_type_arg_subst mono_map poly_map new_subst_bound = 
+ * returns an iter of the type substitutions that can be derived from the given maps *)
+let derive_type_arg_subst mono_map poly_map = 
    (*derives the substitutions from two sets (iters) of type arguments*)
     let type_arg_iter_subst mono_type_args_iter poly_type_args_iter =
         let poly_arg_map mono_type_args_iter poly_type_list =
             Iter.flat_map (type_arg_list_subst poly_type_list) mono_type_args_iter
         in
         Iter.flat_map (poly_arg_map mono_type_args_iter) poly_type_args_iter
-    in
-    let _type_arg_iter_subst mono_type_args_iter (poly_type_args_iter: Ty.t list Iter.t) =
-        let poly_arg_fold mono_ty_args_iter acc poly_ty_list =
-            let (all_subst, count) = acc in
-            if count < 0 then acc
-            else
-                let new_subst = Iter.flat_map (type_arg_list_subst poly_ty_list) mono_ty_args_iter in
-                let new_count = count - Iter.length new_subst in
-                iter_subst_union all_subst new_subst, new_count
-        in
-        let res_substs, _ = Iter.fold (poly_arg_fold mono_type_args_iter) (Iter.empty, max_nb (Iter.length mono_type_args_iter) new_subst_bound) poly_type_args_iter in
-        res_substs
     in
     let combine fun_sym (old_poly_args, new_poly_args) acc =
         let new_poly_subst, old_poly_subst = acc in
@@ -157,14 +147,12 @@ let derive_type_arg_subst mono_map poly_map new_subst_bound =
 (* truncates an iter after len elements *)
 let iter_truncate len iter =
     Iter.filter_mapi (fun count elem -> if count < len then Some(elem) else None) iter
+    (* TODO this could potentially be faster *)
+    (*Iter.drop ((Iter.length iter) - len) iter*)
 
-let compare_count = ref 0
 (* given a map from function symbols to polymorphic type arguments
- * given a set (iter for now) of type substitutions
+ * given an iter of type substitutions
  * generates two maps of the derived monomorphic and polymorphic type arguments *)
-(* the absolute bound gives a hard cap on the number of new type arguments that are added for each function symbol
- * for each clause, the relative bound caps the number of new type arguments based on the number of existing ones note that
- * the relative bound will allow at least one new type argument even if no type arguments currently exist*)
 let apply_subst_map old_mono_map poly_map new_poly_subst old_poly_subst =
     (* applies the substitution to the type arguments, returns some iff the result is different from
      * the original type arguments *)
@@ -283,15 +271,36 @@ let print_all_type_args fun_sym iter =
 
 
 let all_arr_len = ref 0
+
+
+
+(* given a subst map, an iter of substitutions and the current iteration,
+   will update the map accordingly*)
+let update_susbt_map all_subst curr_map curr_iteration =
+    let add_single_subst subst_map subst =
+        (* we use max_exn because we assume to not have any empty substitutions *)
+        let max_var = Iter.max_exn
+            ~lt:(fun var var' ->
+                HVar.compare InnerTerm.compare ((fst var):> InnerTerm.t HVar.t) ((fst var'):> InnerTerm.t HVar.t) > 0) 
+            (Subst.domain subst) |> fst in
+        SubstMap.update (HVar.id max_var) (fun iter -> match iter with
+            | None -> Some (Iter.singleton (subst, curr_iteration))
+            | Some iter -> Some (Iter.cons (subst, curr_iteration) iter)) subst_map
+        
+    in
+    Iter.fold add_single_subst curr_map all_subst
+
+
 (* takes a map from functions symbols to sets (iter for now) of monomorphic type arguments
  * takes an array of literals
  * takes a map from clause_ids to a map of function symbols to sets (iter for now) of monomorphic type arguments
- * takes a clause id
+ * takes a map from clause_ids to a map of type variables to iters of (substitution, int) pairs
+ * this stores all the generated substitutions for each type variable, the integer is used to keep track of the
+ * iteration at which it was generated
  * returns a map of new monomorphic type arguments
  * returns a map of new polymorphic type arguments
- * returns an array of literals that have been partially monomorphised
- * that have been partially monomorphised *)
-let mono_step_clause mono_type_args_map poly_type_args_map literals bounds =
+ * returns the updated substitution map *)
+let mono_step_clause mono_type_args_map poly_type_args_map susbt_clause_map curr_iteration literals bounds =
 
     if false then
         begin
@@ -302,7 +311,7 @@ let mono_step_clause mono_type_args_map poly_type_args_map literals bounds =
         end;
 
     (*generate all substitutions from mono and poly type arguments*)
-    let new_poly_subst_all, old_poly_subst_all = derive_type_arg_subst mono_type_args_map poly_type_args_map bounds.mono_clause in
+    let new_poly_subst_all, old_poly_subst_all = derive_type_arg_subst mono_type_args_map poly_type_args_map in
     let subst_iter_all = iter_subst_union new_poly_subst_all old_poly_subst_all in
 
     (*apply the substitutions to the poly type arguments*)
@@ -318,37 +327,15 @@ let mono_step_clause mono_type_args_map poly_type_args_map literals bounds =
         ArgMap.mapi (fun fun_sym iter -> iter_truncate (max_nb (Iter.length (fst (ArgMap.find fun_sym poly_type_args_map))) bounds.poly_clause) iter) new_poly_map_all
     in
 
-    
-    let var_eq = HVar.equal (fun _ _ -> true) in
-    let clause_ty_vars lit_arr =
-        (*Printf.printf "lit_arr length %i\n" (Array.length lit_arr);*)
-        all_arr_len := !all_arr_len + Array.length lit_arr;
-        let all_vars = Iter.uniq ~eq:var_eq (Iter.flat_map (fun lit -> (Literal.Seq.vars lit :> InnerTerm.t HVar.t Iter.t)) (Iter.of_array lit_arr)) in
-        Iter.filter (fun var -> InnerTerm.equal (HVar.ty var) InnerTerm.tType) all_vars
-    in
-    let vars_to_instantiate = clause_ty_vars literals in
-    (*Printf.printf "We have %i type variables to instantiate\n" (Iter.length vars_to_instantiate);*)
-    let selected_subst = select_subst subst_iter_all vars_to_instantiate bounds.subst_per_ty_var in
-    (*Printf.printf "We have %i selected substitutions\n" (Iter.length selected_subst);*)
-    let monomorphising_subst = 
-        if Iter.is_empty selected_subst then Iter.empty
-        else
-            Iter.uniq ~eq:Subst.equal (Iter.persistent_lazy (generate_monomorphising_subst selected_subst vars_to_instantiate bounds.monomorphising_subst)) in
-    (*Printf.printf "We have %i monomorphising substitutions\n" (Iter.length monomorphising_subst);*)
-
-    let new_lits_iter_all = Iter.map (fun subst -> Array.map (fun lit -> apply_subst_lit lit subst) literals) monomorphising_subst in
 
     (*let lit_arr_eq = Array.for_all2 Literal.equal in*)
     
     (*let new_lits_iter = Iter.uniq ~eq:lit_arr_eq new_lits_iter_all in*)
 
-    (* by construction of the substitutions *)
-    (*assert (Iter.for_all (fun lit_arr -> Array.for_all lit_is_monomorphic lit_arr) new_lits_iter);*)
-
     (*Printf.printf "We created %i clauses\n" (Iter.length new_lits_iter_fresh);*)
 
     (*returns the new_mono_map, new_poly_map and new_literals*)
-    new_mono_map, new_poly_map, new_lits_iter_all
+    new_mono_map, new_poly_map, (update_susbt_map subst_iter_all susbt_clause_map curr_iteration)
 
 
 
@@ -357,19 +344,20 @@ let mono_step_clause mono_type_args_map poly_type_args_map literals bounds =
  * takes a map from clause_ids to a map from function symbols to sets (iter for now) of polymorphic type arguments
  * takes a list of clauses under the form of a (clause_id * literal array) (clause_ids are ints)
  * returns an updated monomorphic map, polymorphic map and list of updated clauses *)
-let mono_step clause_list mono_map poly_clause_map bounds =
+let mono_step clause_list mono_map poly_clause_map subst_map curr_iter bounds =
 
     Printf.printf "We have %i total literals\n" !all_arr_len;
     
     (* given an accumulator that contains a list of clauses and two type argument maps (one mono and one poly)
      * returns an accumulator updated with regards to the given literals*)
     let process_clause acc (clause_id, literals) =
-        let (acc_clauses, acc_mono_map, acc_poly_clause_map) = acc in
+        let (acc_subst, acc_mono_map, acc_poly_clause_map) = acc in
 
         (*assuming it doesn't fail because we previously add all clause ids to the poly_clause_map*)
         let poly_map = ClauseArgMap.find clause_id poly_clause_map in
+        let old_clause_subst_map = PbSubstMap.find clause_id subst_map in
 
-        let (new_mono_map, new_poly_map, new_mono_clauses) = mono_step_clause mono_map poly_map literals bounds in
+        let (new_mono_map, new_poly_map, new_clause_subst_map) = mono_step_clause mono_map poly_map old_clause_subst_map curr_iter literals bounds in
 
         let merge_iter _ iter_1 iter_2 = Some (Iter.uniq ~eq:ty_arg_eq (Iter.union ~eq:ty_arg_eq iter_1 iter_2)) in
         let res_mono_map = ArgMap.union merge_iter new_mono_map acc_mono_map in
@@ -378,12 +366,13 @@ let mono_step clause_list mono_map poly_clause_map bounds =
         let res_poly_clause_map = ClauseArgMap.add clause_id new_poly_map acc_poly_clause_map in
 
 
-        let new_clause_list = Iter.to_list (Iter.map (fun lit_arr -> clause_id, lit_arr) new_mono_clauses) in
+        (*let new_clause_list = Iter.to_list (Iter.map (fun lit_arr -> clause_id, lit_arr) new_mono_clauses) in*)
+        let res_subst_map = PbSubstMap.add clause_id new_clause_subst_map acc_subst in
 
-        (new_clause_list @ acc_clauses, res_mono_map, res_poly_clause_map)
+        (res_subst_map, res_mono_map, res_poly_clause_map)
     in
-    let new_mono_clauses, new_mono_map, new_poly_clause_map = 
-        List.fold_left process_clause (clause_list, ArgMap.empty, ClauseArgMap.empty) clause_list
+    let new_subst_map, new_mono_map, new_poly_clause_map = 
+        List.fold_left process_clause (subst_map, ArgMap.empty, ClauseArgMap.empty) clause_list
     in
     let age_map original_map extra_map =
         let new_args_iter fun_sym = match ArgMap.find_opt fun_sym extra_map with
@@ -403,8 +392,7 @@ let mono_step clause_list mono_map poly_clause_map bounds =
             | Some extra_poly_map -> age_map original_poly_map extra_poly_map
     in
     let res_poly_clause_map = ClauseArgMap.mapi clause_map_age poly_clause_map in
-    Printf.printf "\nwe have an extra %i new clauses generated\n" (List.length new_mono_clauses);
-    new_mono_clauses, res_mono_map, res_poly_clause_map
+    new_subst_map, res_mono_map, res_poly_clause_map
 
 (* takes a map from function symbols to sets (iter for now) of monomorphic type arguments
  * same for polymorphic type arguments
@@ -474,6 +462,39 @@ let map_initialisation_step (mono_map, clause_poly_map) (clause_id, literals) =
 
     new_mono_map, new_clause_poly_map
 
+let generate_monomorphising_subst_2 subst_map ty_var_iter max_new_subst =
+    let remaining_ty_vars ty_var_iter subst =
+        Iter.diff ~eq:(HVar.equal InnerTerm.equal) ty_var_iter (Iter.map fst (Subst.domain subst))
+    in
+    let rec create_subst (subst_acc, acc_iter, acc_count) vars_to_instantiate =
+        if acc_count < 0 then
+            acc_iter, acc_count
+        else
+            match Iter.head vars_to_instantiate with
+                | None -> (Iter.singleton subst_acc), acc_count - 1
+                | Some ty_var ->
+                    (* this is where we ignore when the subtitution was generated *)
+                    let candidate_subst = Iter.map fst (SubstMap.find (HVar.id ty_var) subst_map) in
+                    (* here is where the substitution selection method is used *)
+                    let process_subst acc_count next_subst =
+                        match Subst.merge subst_acc next_subst with
+                            | exception _ -> Iter.empty, acc_count
+                            | merged_subst ->
+                                let new_vars_to_instantiate = remaining_ty_vars vars_to_instantiate merged_subst in
+                                let res_subst, res_count = create_subst (merged_subst, acc_iter, acc_count) new_vars_to_instantiate in
+                                res_subst, res_count
+                    in
+                    let process_fold (acc_iter, acc_count) next_subst =
+                        if acc_count < 0 then acc_iter, acc_count
+                        else
+                            let res_subst, res_count = process_subst acc_count next_subst in
+                            iter_subst_union acc_iter res_subst, res_count
+                    in
+                    Iter.fold process_fold (Iter.empty, acc_count) candidate_subst
+    in
+    create_subst (Subst.empty, Iter.empty, max_new_subst) ty_var_iter |> fst
+
+
 (* takes a list of (clause_id, literal array) pairs
  * takes an integer to limit the numbers of iterations
  * returns an updated list of clauses *)
@@ -498,10 +519,6 @@ let monomorphise_problem clause_list loop_count =
 
     Printf.printf "after init %f\n" (Sys.time() -. !begin_time);
 
-    (* another check due to a later Map.find, holds true useless computation at this point*)
-    (*(assert (List.for_all (fun (clause_id, _) -> ClauseArgMap.find_opt clause_id init_clause_poly_map != None) clause_list));
-    (assert (ClauseArgMap.for_all (fun _ poly_map -> ArgMap.for_all (fun key _ -> ArgMap.find_opt key init_mono_map != None) poly_map ) init_clause_poly_map));*)
-
     let all_bounds = {
         mono_clause = {
             relative_bound = 1.3;
@@ -515,6 +532,7 @@ let monomorphise_problem clause_list loop_count =
         };
         subst_per_ty_var = 1000000;
         monomorphising_subst = 20;
+        new_clauses_relative_bound = 1.5;
     }
     in
 
@@ -528,29 +546,70 @@ let monomorphise_problem clause_list loop_count =
     Printf.printf "We begin with %i polymorphic clauses\n" (List.length poly_clause_list);
 
     (* monomorphisation loop *)
-    let rec monomorphisation_loop curr_count mono_map poly_clause_map new_clause_acc =
-        (*Printf.printf "final count %i\n" !compare_count;*)
+    let rec monomorphisation_loop curr_count mono_map poly_clause_map subst_map =
         Printf.printf "begin loop %f\n" (Sys.time() -. !begin_time);
         let mono_map = ArgMap.map (fun (new_iter, old_iter) -> Iter.uniq ~eq:ty_arg_eq (Iter.persistent_lazy new_iter), Iter.uniq ~eq:ty_arg_eq (Iter.persistent_lazy old_iter)) mono_map in
         Printf.printf "we have %i total monomorphic type args\n" (ArgMap.fold (fun _ (old_iter, new_iter) acc -> (Iter.length old_iter) + (Iter.length new_iter) + acc) mono_map 0);
-        if curr_count <= 0 then mono_map, poly_clause_map, new_clause_acc 
+        if curr_count <= 0 then mono_map, poly_clause_map, subst_map
         else
             (* given that the maps are updated independently of the clause list, we could not pass the udpated
              clauses as parameter, however, it is convienient to do so*)
-            let new_clauses, new_mono_map, new_poly_clause_map = mono_step poly_clause_list mono_map poly_clause_map all_bounds in
-            let res = monomorphisation_loop (curr_count-1) new_mono_map new_poly_clause_map (new_clauses@new_clause_acc) in
+            let new_subst, new_mono_map, new_poly_clause_map = mono_step poly_clause_list mono_map poly_clause_map subst_map curr_count all_bounds in
+            let res = monomorphisation_loop (curr_count-1) new_mono_map new_poly_clause_map new_subst in
             res
     in
 
+    let _, _, subst_map_res =
+        monomorphisation_loop loop_count init_mono_map init_clause_poly_map PbSubstMap.empty in
+
+    let var_eq = HVar.equal (fun _ _ -> true) in
+    let clause_ty_vars lit_arr =
+        (*Printf.printf "lit_arr length %i\n" (Array.length lit_arr);*)
+        all_arr_len := !all_arr_len + Array.length lit_arr;
+        let all_vars = Iter.uniq ~eq:var_eq (Iter.flat_map (fun lit -> (Literal.Seq.vars lit :> InnerTerm.t HVar.t Iter.t)) (Iter.of_array lit_arr)) in
+        Iter.filter (fun var -> InnerTerm.equal (HVar.ty var) InnerTerm.tType) all_vars
+    in
+
+    let instantiate_clause subst_map (clause_id, lit_arr) max_new_clause_nb =
+        let vars_to_instantiate = clause_ty_vars lit_arr in
+        (* TODO check that monomorphising subst is possible in the first place *)
+        let mono_subst = generate_monomorphising_subst_2 subst_map vars_to_instantiate max_new_clause_nb in
+        let apply_subst subst lit_arr =
+            Array.map (fun lit -> apply_subst_lit lit subst) lit_arr
+        in
+        let new_lits_iter = Iter.map (fun subst -> apply_subst subst lit_arr) mono_subst in
+        new_lits_iter
+    in
+
+    let new_clauses =
+        List.map
+            (fun (clause_id, lit_arr) -> instantiate_clause (PbSubstMap.find clause_id subst_map_res) (clause_id, lit_arr) 10)
+            clause_list
+    in
+
+    let clause_list = Iter.to_list (List.fold_left (fun acc iter -> Iter.append acc iter) Iter.empty new_clauses) in
+
+
+
+   (* 
+    let vars_to_instantiate = clause_ty_vars literals in
+    (*Printf.printf "We have %i type variables to instantiate\n" (Iter.length vars_to_instantiate);*)
+    let selected_subst = select_subst subst_iter_all vars_to_instantiate bounds.subst_per_ty_var in
+    (*Printf.printf "We have %i selected substitutions\n" (Iter.length selected_subst);*)
+    let monomorphising_subst = 
+        if Iter.is_empty selected_subst then Iter.empty
+        else
+            Iter.uniq ~eq:Subst.equal (Iter.persistent_lazy (generate_monomorphising_subst selected_subst vars_to_instantiate bounds.monomorphising_subst)) in
+    (*Printf.printf "We have %i monomorphising substitutions\n" (Iter.length monomorphising_subst);*)
+
+    let new_lits_iter_all = Iter.map (fun subst -> Array.map (fun lit -> apply_subst_lit lit subst) literals) monomorphising_subst in*)
+
     (* resulting clause_list with updated literals *)
-    let _, _, clause_list_res =
-        monomorphisation_loop loop_count init_mono_map init_clause_poly_map poly_clause_list in
 
-    Printf.printf "We end with %i clauses\n" (List.length clause_list_res);
-    Printf.printf "generating clauses %f\n" (Sys.time() -. !begin_time);
+    Printf.printf "generating base substitutions %f\n" (Sys.time() -. !begin_time);
+    clause_list
 
-
-    let mono_clause_list_res =
+    (*let mono_clause_list_res =
         let mono_clauses = List.filter clause_is_monomorphic clause_list_res in
         let mono_clauses_no_empty = List.filter (fun (_, lit_arr) -> Array.to_list lit_arr != []) mono_clauses in
         Printf.printf "We have lost %i clauses\n" (List.length clause_list_res - List.length mono_clauses);
@@ -560,7 +619,7 @@ let monomorphise_problem clause_list loop_count =
     (*Printf.printf "Post filter we have %i clauses\n" (List.length mono_clause_list_res);*)
 
 
-    mono_clause_list_res @ (List.filter clause_is_monomorphic clause_list)
+    mono_clause_list_res @ (List.filter clause_is_monomorphic clause_list)*)
 
 (* We're not done yet, because even though we have monomorphised the clauses, they still make use of polymorphic type constructors which can't be handled by e 
  * therefore, we must replace all instantiated polymorphic type constructors by a monomorphic type, this should not be hard, ex: replace all list int by list_int
