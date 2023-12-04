@@ -450,7 +450,7 @@ let mangle (ty:t): string =
     | Builtin Int -> Buffer.add_string buf "int"
     | Builtin Rat -> Buffer.add_string buf "rat"
     | Builtin Real -> Buffer.add_string buf "real"
-    | Builtin Prop -> Buffer.add_string buf "o"
+    | Builtin Prop -> Buffer.add_string buf "prop"
     | Builtin Term -> Buffer.add_string buf "i"
     | Var _ -> Buffer.add_string buf "_"
     | DB i -> Printf.bprintf buf "A%d" i

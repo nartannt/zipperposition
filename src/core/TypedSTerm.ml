@@ -754,6 +754,21 @@ module Ty = struct
     aux buf ty;
     Buffer.contents buf
 
+  let mangle_except_builtin ty =
+    match view ty with
+        (* TODO factorise if possible ? *)
+        (* not great to do this by hand but haven't found any other way
+         * we would like to convert it to a Type.t to use Type.to_string
+         * but then we would already be doing a similar match*)
+        | Ty_builtin TType -> STerm.builtin Builtin.TType
+        | Ty_builtin Int -> STerm.builtin Builtin.TyInt
+        | Ty_builtin Rat -> STerm.builtin Builtin.TyRat
+        | Ty_builtin Real -> STerm.builtin Builtin.TyReal
+        | Ty_builtin Prop -> STerm.builtin Builtin.Prop
+        | Ty_builtin Term -> STerm.builtin Builtin.Term
+        | _ -> STerm.const (mangle ty)
+
+
   let needs_args ty = arity ty <> (0,0)
 
   let rec is_quantifier_free t : bool =
@@ -1673,7 +1688,7 @@ let rec mangle_erase ty =
       (Printf.printf "You fucked up: Polymorphism detected\n";
       assert false);
   if args = [] then
-      STerm.const (mangle ret)
+      mangle_except_builtin ret
   else
       STerm.app (mangle_erase ret) (List.map mangle_erase args)
 
@@ -1681,7 +1696,7 @@ let rec mangle_erase ty =
 (* TODO make tests for mangle_erase *)
 let shitty_var_replace str =
     (Str.global_replace (Str.regexp "-") "_" str)
-let rec erase t ?(mangle = false) =
+let rec erase t ?(mangle=false) =
   match ty t with
     | Some ty_res when is_tType ty_res && mangle -> mangle_erase t
     | _ -> 
