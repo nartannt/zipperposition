@@ -21,5 +21,7 @@ for filename in ../tptp_benchmarks/poly_problems/TF1/*.p; do
     timeout 45\
     ./zipperposition.exe --mode best --output none "$filename" --timeout 30 >> "$1"
 
+    printf "\n\n ------------------------------------------------------------------------------- \n\n" >> "$1
+    printf "$filename done\n" >> "$1"
     printf "$filename done\n"
 done
