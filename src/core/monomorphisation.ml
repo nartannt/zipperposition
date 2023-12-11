@@ -49,22 +49,20 @@ let remove_duplicates iter ~eq =
 
 (* TODO add this to Type.ml (with better name) *)
 let rec my_ty_eq ty ty' =
-    Ty.to_string ty = Ty.to_string ty'
-    (*let res = match Ty.view ty, Ty.view ty' with
+    let res = match Ty.view ty, Ty.view ty' with
         | Fun (l, ty), Fun (l', ty') ->
-            true || (List.for_all2 my_ty_eq l l' && my_ty_eq ty ty')
-        | Forall ty, Forall ty' -> true || my_ty_eq ty ty'
-        (*| Var var, Var var' when Ty.is_tType (HVar.ty var) && Ty.is_tType (HVar.ty var')*)
-            (*-> HVar.equal ( fun _ _ -> true) var var'*)
-        | Var _, Var _ -> true
-        | Builtin b, Builtin b' -> true || b = b'
-        | DB i, DB i' -> assert false; i = i'
+            (List.for_all2 my_ty_eq l l' && my_ty_eq ty ty')
+        | Forall ty, Forall ty' -> my_ty_eq ty ty'
+        | Var var, Var var' when Ty.is_tType (HVar.ty var) && Ty.is_tType (HVar.ty var')
+            -> HVar.equal ( fun _ _ -> true) var var'
+        | Builtin b, Builtin b' -> b = b'
+        | DB i, DB i' -> i = i'
         (* TODO check with someone that knows the code if using the name is fine
          * my suspicion is that it isn't, in that case attempt to find alternative solution*)
-        | App (f, l), App (f', l') -> true || (ID.name f = ID.name f' && List.for_all2 my_ty_eq l l')
+        | App (f, l), App (f', l') -> ID.name f = ID.name f' && List.for_all2 my_ty_eq l l'
         | _ ->  false
     in
-    res*)
+    res
 
 (* Iter.union needs to be provided an equality function when dealing with lists of types *)
 (* not that Ty.equal is a physical equality*)
@@ -349,14 +347,17 @@ let mono_step_clause mono_type_args_map poly_type_args_map susbt_clause_map curr
     (* truncationg the new type arguments according to the bounds *)
     (* TODO factorise with similar truncation done in mono_step for the monomorphic map*)
     let new_poly_map = 
-        ArgMap.mapi (fun fun_sym iter -> iter_truncate (max_nb (Iter.length (fst (ArgMap.find fun_sym poly_type_args_map))) bounds.poly_clause) iter) new_poly_map_all
+        ArgMap.mapi (fun fun_sym iter -> 
+            let all_poly_ty_args = ArgMap.find fun_sym poly_type_args_map in 
+            let cap = max_nb (Iter.length (fst all_poly_ty_args) + Iter.length (snd all_poly_ty_args)) bounds.poly_clause in
+            Iter.persistent (iter_truncate (max_nb cap bounds.poly_clause) iter)) 
+            new_poly_map_all
     in
 
     new_mono_map_all, new_poly_map, (update_susbt_map subst_iter_all susbt_clause_map curr_iteration)
 
 
 let count = ref 0
-
 
 (* takes a map from function symbols to sets (iter for now) of monomorphic type arguments
  * takes a map from clause_ids to a map from function symbols to sets (iter for now) of polymorphic type arguments
@@ -378,9 +379,7 @@ let mono_step clause_list mono_map poly_clause_map subst_map curr_iter bounds =
 
         let (new_mono_map_all, new_poly_map, new_clause_subst_map) = mono_step_clause mono_map poly_map old_clause_subst_map curr_iter literals bounds in
 
-        let new_mono_map = 
-            ArgMap.mapi (fun fun_sym iter -> iter_truncate (max_nb (Iter.length (fst (ArgMap.find fun_sym mono_map))) bounds.mono_clause) iter) new_mono_map_all
-        in
+        let new_mono_map = new_mono_map_all in
         
         let new_mono_ty_args = ArgMap.fold (fun _ iter acc -> (Iter.length iter) + acc) new_mono_map 0 in
         count := !count + new_mono_ty_args;
@@ -398,19 +397,24 @@ let mono_step clause_list mono_map poly_clause_map subst_map curr_iter bounds =
 
         (res_subst_map, res_mono_map, res_poly_clause_map)
     in
-    let new_subst_map, new_mono_map, new_poly_clause_map = 
+    let new_subst_map, new_mono_map_all, new_poly_clause_map = 
         List.fold_left process_clause (subst_map, ArgMap.empty, ClauseArgMap.empty) clause_list
+    in
+    let new_mono_map = 
+        ArgMap.mapi (fun fun_sym iter -> 
+            let mono_args = ArgMap.find fun_sym mono_map in
+            let cap = max_nb (Iter.length (fst mono_args) + Iter.length (snd mono_args)) bounds.mono_clause in
+            Iter.persistent_lazy (iter_truncate cap iter)) new_mono_map_all
     in
     let age_map original_map extra_map =
         let new_args_iter fun_sym = match ArgMap.find_opt fun_sym extra_map with
             | Some iter -> iter
             | None -> Iter.empty
         in
-        let iter_age_fold fun_sym (original_old_iter, original_new_iter) acc_map =
-            let new_old_iter = Iter.union ~eq:ty_arg_eq original_old_iter original_new_iter in
-            ArgMap.add fun_sym (Iter.persistent_lazy new_old_iter, Iter.persistent_lazy (new_args_iter fun_sym)) acc_map
+        let iter_age_mapi fun_sym (old_iter, new_iter) =
+            (Iter.persistent (Iter.union ~eq:ty_arg_eq old_iter new_iter), Iter.persistent_lazy (new_args_iter fun_sym))
         in
-        ArgMap.fold iter_age_fold original_map ArgMap.empty
+        ArgMap.mapi iter_age_mapi original_map
     in
     let res_mono_map = age_map mono_map new_mono_map in
     let clause_map_age clause_id original_poly_map =
@@ -457,6 +461,29 @@ let add_typed_sym mono_map poly_map term =
     (assert (ArgMap.for_all (fun fun_sym _ -> ArgMap.find_opt fun_sym res_mono_map != None) res_poly_map));*)
     res_mono_map, res_poly_map
 
+(* for a clause, removes polymorphic type arguments that contain one or more type variables which cannot be instantiated *)
+(* the test is making sure that the mono_map is empty for every function symbol in which the type variable appears, so some
+ * type variables which can't be instantiated will not be removed *)
+let poly_ty_args_filter mono_map poly_map =
+    let ty_var_eq = HVar.equal my_ty_eq in
+    let vars_of_ty_args ty_args =
+        Iter.flat_map (fun ty_list -> List.fold_left (fun acc ty -> Iter.union ~eq:ty_var_eq acc (Ty.Seq.vars ty)) Iter.empty ty_list) ty_args
+    in
+    let ty_vars_iter = remove_duplicates ~eq:ty_var_eq (Iter.persistent_lazy (ArgMap.fold (fun _ (_, ty_args_iter) acc -> Iter.append (vars_of_ty_args ty_args_iter) acc) poly_map Iter.empty)) in
+    let ty_var_uninstantiable curr_poly_map ty_var =
+        ArgMap.for_all (fun fun_sym (_, ty_args_iter) -> not (Iter.mem ~eq:ty_var_eq ty_var (vars_of_ty_args ty_args_iter)) || Iter.is_empty (snd (ArgMap.find fun_sym mono_map))) curr_poly_map
+    in
+    let ty_vars_to_remove = Iter.persistent_lazy (Iter.filter (ty_var_uninstantiable poly_map) ty_vars_iter) in
+    let ty_args_filter ty_list =
+        List.exists (fun ty -> not (Iter.exists (fun ty_var -> Iter.mem ~eq:ty_var_eq ty_var ty_vars_to_remove) (Ty.Seq.vars ty))) ty_list
+    in
+    let ty_arg_map_map (_, ty_args_iter) =
+        Iter.empty, remove_duplicates ~eq:ty_arg_eq (Iter.persistent_lazy (Iter.filter ty_args_filter ty_args_iter))
+    in
+    ArgMap.map ty_arg_map_map poly_map
+    
+
+
 (* given an array of literals, returns an iter of all the terms in literals *)
 let terms_iter literals = 
     Literals.Seq.terms literals
@@ -465,6 +492,7 @@ let init_single_subst_map literals =
     let all_vars = Literals.Seq.vars literals in
     let all_ty_vars = Iter.filter (fun var -> Type.equal (HVar.ty var) Type.tType) all_vars in
     Iter.fold (fun acc ty_var -> SubstMap.add (HVar.id ty_var) Iter.empty acc) SubstMap.empty all_ty_vars
+
 
 
 (* will initialise the maps with the function symbol -> type arguments bindings derived from the clauses *)
@@ -540,6 +568,12 @@ let generate_monomorphising_subst_2 subst_map ty_var_iter max_new_subst =
     res
 
 
+let count_arg_map arg_map =
+    ArgMap.fold (fun _ (old_iter, new_iter) acc -> (Iter.length old_iter) + (Iter.length new_iter) + acc) arg_map 0
+
+let count_clause_arg_map clause_arg_map =
+    ClauseArgMap.fold (fun _ arg_map acc -> (count_arg_map arg_map) + acc) clause_arg_map 0
+
 (* takes a list of (clause_id, literal array) pairs
  * takes an integer to limit the numbers of iterations
  * returns an updated list of clauses *)
@@ -560,6 +594,9 @@ let monomorphise_problem clause_list loop_count =
     (* create initial maps *)
     let init_mono_map, init_clause_poly_map, init_subst_map =
         List.fold_left map_initialisation_step (ArgMap.empty, ClauseArgMap.empty, PbSubstMap.empty) clause_list in
+
+    (* remove polymorphic type arguments that contain type variables which cannot be instantiated *)
+    let init_clause_poly_map = ClauseArgMap.map (fun poly_map -> poly_ty_args_filter init_mono_map poly_map) init_clause_poly_map in
 
     if false then
         begin
@@ -584,14 +621,14 @@ let monomorphise_problem clause_list loop_count =
 
     let all_bounds = {
         mono_clause = {
-            relative_bound = 0.5;
+            relative_bound = 2.0;
             absolute_cap = 10000000000;
-            relative_floor = 1;
+            relative_floor = 5;
         };
         poly_clause = {
-            relative_bound = 0.5;
+            relative_bound = 0.1;
             absolute_cap = 10000000000;
-            relative_floor = 1;
+            relative_floor = 0;
         };
         subst_per_ty_var = 1000000;
         (* number of substitutions generated per clause per iteration *)
@@ -603,10 +640,11 @@ let monomorphise_problem clause_list loop_count =
         Printf.printf "count %i \n" !count;
         count := 0;
         Printf.printf "\nbegin loop %f\n" (Sys.time() -. !begin_time);
-        (*let mono_map = ArgMap.map (fun (old_iter, new_iter) -> remove_duplicates ~eq:ty_arg_eq (Iter.persistent_lazy old_iter), remove_duplicates ~eq:ty_arg_eq (Iter.persistent_lazy new_iter)) mono_map in*)
-        Printf.printf "we have %i total monomorphic type args\n" (ArgMap.fold (fun _ (old_iter, new_iter) acc -> (Iter.length old_iter) + (Iter.length new_iter) + acc) mono_map 0);
+        Printf.printf "total time %f \n" !total_time;
+        (*let mono_map = ArgMap.map (fun (old_iter, new_iter) -> remove_duplicates ~eq:ty_arg_eq (Iter.persistent old_iter), remove_duplicates ~eq:ty_arg_eq (Iter.persistent new_iter)) mono_map in*)
+        Printf.printf "we have %i total monomorphic type args\n" (count_arg_map mono_map);
         Printf.printf "we have %i total polymorphic type args\n"
-         (ClauseArgMap.fold (fun _ poly_map acc -> (ArgMap.fold (fun _ (old_iter, new_iter) acc -> (Iter.length old_iter) + (Iter.length new_iter) + acc) poly_map acc)) poly_clause_map 0);
+         (count_clause_arg_map poly_clause_map);
         Printf.printf "current time %f\n" (Sys.time() -. !begin_time);
 
         if curr_count <= 0 then mono_map, poly_clause_map, subst_map
@@ -689,7 +727,7 @@ let monomorphise_problem clause_list loop_count =
     Printf.printf "generating all clauses %f\n" (Sys.time() -. !begin_time);
     Printf.printf "all new clauses %i\n" (List.length clause_list - List.length mono_clauses);
 
-    Printf.printf "\n\n small report: average ty_eq time : %f\n" (!total_time /. float_of_int !total_count);
+    Printf.printf "\n\nsmall report: average ty_eq time : %f\n" (!total_time /. float_of_int !total_count);
     Printf.printf "total time : %f\n" !total_time;
     Printf.printf "total count : %i\n" !total_count;
     clause_list
