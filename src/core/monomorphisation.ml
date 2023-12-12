@@ -132,13 +132,17 @@ let iter_subst_union = Iter.union ~eq:Subst.equal ~hash:Subst.hash
  * polymorphic types to the monomorphic types one by one 
  * expects the list to be of the same length *)
 let type_arg_list_subst type_list_poly type_list_mono =
-    let combine subst_iter mono_ty poly_ty =
+    let combine curr_subst_opt mono_ty poly_ty =
         try 
-            Iter.cons (match_type poly_ty ~mono_type:mono_ty) subst_iter
-        with Unif.Fail ->
-            subst_iter
+            match curr_subst_opt with
+                | None -> None
+                | Some curr_subst ->
+                    Some (Subst.merge (match_type poly_ty ~mono_type:mono_ty) curr_subst)
+        with 
+            | Unif.Fail -> curr_subst_opt
+            | Subst.InconsistentBinding _ -> None
     in
-    List.fold_left2 combine Iter.empty type_list_mono type_list_poly
+    List.fold_left2 combine (Some Subst.empty) type_list_mono type_list_poly
 
 
 (* given a basic bound and the size of whatever object we are bounding
@@ -147,14 +151,22 @@ let max_nb len bound =
     let rel_cap = int_of_float (float_of_int len *. bound.relative_bound) in
     min bound.absolute_cap (max bound.relative_floor rel_cap)
 
+(* splits the mixed type_args_iter into its monomorphic and polymorphic components *)
+let split_iter type_args_iter =
+    let type_args_iter = Iter.persistent_lazy type_args_iter in
+    (* might be able to find a more efficient way of doing this, instead of going through the iter twice*)
+    let mono_type_args = Iter.filter (List.for_all Ty.is_ground) type_args_iter in
+    let poly_type_args = Iter.filter (List.for_all (fun ty -> not (Ty.is_ground ty))) type_args_iter in
+    mono_type_args, poly_type_args
+
 (* takes a map of function symbols to monomorphic type arguments
  * takes a map of function symbols to polymorphic type arguments
  * returns an iter of the type substitutions that can be derived from the given maps *)
 let derive_type_arg_subst mono_map poly_map bounds = 
    (*derives the substitutions from two sets (iters) of type arguments*)
-    let type_arg_iter_subst mono_type_args_iter poly_type_args_iter =
+    let type_arg_iter_subst mono_type_args_iter poly_type_args_iter max_mono_subst max_poly_subst =
         let poly_arg_map mono_type_args_iter poly_type_list =
-            Iter.flat_map (type_arg_list_subst poly_type_list) mono_type_args_iter
+            (Iter.filter_map (type_arg_list_subst poly_type_list) mono_type_args_iter)
         in
         Iter.flat_map (poly_arg_map mono_type_args_iter) poly_type_args_iter
     in
@@ -165,12 +177,16 @@ let derive_type_arg_subst mono_map poly_map bounds =
         let derived_new_poly_subst =
             (*assumes that old_mono_args and new_mono_args are distinct, which should be the case*)
             (* TODO the uniq should be useless, keeping it for testing in the meantime*)
-            type_arg_iter_subst (remove_duplicates ~eq:ty_arg_eq (Iter.persistent_lazy (Iter.append old_mono_args new_mono_args))) new_poly_args
+            type_arg_iter_subst (remove_duplicates ~eq:ty_arg_eq (Iter.persistent_lazy (Iter.append old_mono_args new_mono_args))) new_poly_args 0 0
         in
         (* substitutions dervied from the old poly type args and the new mono type args*)
         let derived_old_poly_subst =
-            type_arg_iter_subst new_mono_args old_poly_args
+            type_arg_iter_subst new_mono_args old_poly_args 0 0
         in
+        let all_mono_args = ArgMap.find fun_sym mono_map in
+        let max_mono_subst = max_nb (Iter.length (fst all_mono_args) + Iter.length (snd all_mono_args)) bounds.mono_clause in
+        let all_poly_args = ArgMap.find fun_sym poly_map in
+        let max_poly_subst = max_nb (Iter.length (fst all_poly_args) + Iter.length (snd all_poly_args)) bounds.poly_clause in
         let new_poly_subst_res = iter_subst_union new_poly_subst derived_new_poly_subst in
         let old_poly_subst_res = iter_subst_union old_poly_subst derived_old_poly_subst in
         new_poly_subst_res, old_poly_subst_res
@@ -201,15 +217,6 @@ let apply_subst_map old_mono_map poly_map new_poly_subst old_poly_subst =
 
     (* map of both monomorphic and polymorphic type arguments *)
     let mixed_map = ArgMap.map apply_subst_iter poly_map in
-
-    (* splits the mixed map into its monomorphic and polymorphic components *)
-    let split_iter type_args_iter =
-        let type_args_iter = Iter.persistent_lazy type_args_iter in
-        (* might be able to find a more efficient way of doing this, instead of going through the iter twice*)
-        let mono_type_args = Iter.filter (List.for_all Ty.is_ground) type_args_iter in
-        let poly_type_args = Iter.filter (List.for_all (fun ty -> not (Ty.is_ground ty))) type_args_iter in
-        mono_type_args, poly_type_args
-    in
 
     let combine_split fun_sym type_args_iter (acc_mono_map, acc_poly_map) =
         let mono_iter, poly_iter = split_iter type_args_iter in
@@ -345,6 +352,9 @@ let mono_step_clause mono_type_args_map poly_type_args_map susbt_clause_map curr
 
     (*apply the substitutions to the poly type arguments*)
     (*split them into the new_mono and new_poly type arguments*)
+    (* Note: i have just realised that this is absolutely insane, we generate god knows how many substitutions per clause and apply each of them to all the
+     * polymorphic type arguments in the current clause (near 15 000 in total) and after all that we truncate the resulting type_arg_iters making all of 
+     * this completely pointless, i could not imagine writting a dummer program*)
     let new_mono_map_all, new_poly_map_all = apply_subst_map (ArgMap.map fst mono_type_args_map) poly_type_args_map new_poly_subst_all old_poly_subst_all in
 
     (* truncationg the new type arguments according to the bounds *)
@@ -612,7 +622,7 @@ let monomorphise_problem clause_list loop_count =
         new_clauses_relative_bound = 2.0;
 
         (* maximum number of type variable per type in the polymorphic type arguments*)
-        ty_var_limit = 2;
+        ty_var_limit = 3;
     } in
 
     Printf.printf "We start with %i total clauses\n" (List.length clause_list);
