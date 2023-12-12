@@ -164,7 +164,7 @@ let split_iter type_args_iter =
  * returns an iter of the type substitutions that can be derived from the given maps *)
 let derive_type_arg_subst mono_map poly_map bounds = 
    (*derives the substitutions from two sets (iters) of type arguments*)
-    let type_arg_iter_subst mono_type_args_iter poly_type_args_iter max_mono_subst max_poly_subst =
+    let type_arg_iter_subst mono_type_args_iter poly_type_args_iter =
         let poly_arg_map mono_type_args_iter poly_type_list =
             (Iter.filter_map (type_arg_list_subst poly_type_list) mono_type_args_iter)
         in
@@ -177,16 +177,12 @@ let derive_type_arg_subst mono_map poly_map bounds =
         let derived_new_poly_subst =
             (*assumes that old_mono_args and new_mono_args are distinct, which should be the case*)
             (* TODO the uniq should be useless, keeping it for testing in the meantime*)
-            type_arg_iter_subst (remove_duplicates ~eq:ty_arg_eq (Iter.persistent_lazy (Iter.append old_mono_args new_mono_args))) new_poly_args 0 0
+            type_arg_iter_subst (remove_duplicates ~eq:ty_arg_eq (Iter.persistent_lazy (Iter.append old_mono_args new_mono_args))) new_poly_args
         in
         (* substitutions dervied from the old poly type args and the new mono type args*)
         let derived_old_poly_subst =
-            type_arg_iter_subst new_mono_args old_poly_args 0 0
+            type_arg_iter_subst new_mono_args old_poly_args
         in
-        let all_mono_args = ArgMap.find fun_sym mono_map in
-        let max_mono_subst = max_nb (Iter.length (fst all_mono_args) + Iter.length (snd all_mono_args)) bounds.mono_clause in
-        let all_poly_args = ArgMap.find fun_sym poly_map in
-        let max_poly_subst = max_nb (Iter.length (fst all_poly_args) + Iter.length (snd all_poly_args)) bounds.poly_clause in
         let new_poly_subst_res = iter_subst_union new_poly_subst derived_new_poly_subst in
         let old_poly_subst_res = iter_subst_union old_poly_subst derived_old_poly_subst in
         new_poly_subst_res, old_poly_subst_res
@@ -325,6 +321,73 @@ let update_susbt_map all_subst curr_map curr_iteration =
     res
 
 
+(* given a mono and a poly ty arg iter as well as an iter of substitutions and respective mono and poly bounds
+ * will return a new mono and a new poly type arg iter within the given bounds *)
+(* TODO consider returning all used substitutions and restricting total substitutions to these only
+ * would be particularly profitable if we make sure all substitutions are generating lazily (as iters allow)
+ * that way keeping the entire iter of generated substitutions will have little impact on performance *)
+let rec generate_ty_args all_subst poly_ty_args max_new_mono max_new_poly =
+    let process_ty_arg_iter new_ty_arg_iter curr_count =
+        let new_iter_count = curr_count - Iter.length new_ty_arg_iter in
+        iter_truncate curr_count new_ty_arg_iter, new_iter_count
+    in
+    match Iter.head all_subst with
+        | None -> Iter.empty, Iter.empty
+        | _ when max_new_mono <= 0 && max_new_poly <= 0 -> Iter.empty, Iter.empty
+        | Some subst ->
+            let new_ty_args = Iter.map (List.map (apply_ty_subst subst)) poly_ty_args in
+            let new_mono_ty_args_all, new_poly_ty_args_all = split_iter new_ty_args in
+            let new_mono_ty_args, new_mono_count = process_ty_arg_iter new_mono_ty_args_all max_new_mono in
+            let new_poly_ty_args, new_poly_count = process_ty_arg_iter new_poly_ty_args_all max_new_poly in
+            let next_mono_args, next_poly_args = generate_ty_args (Iter.drop 1 all_subst) poly_ty_args new_mono_count new_poly_count in
+            Iter.append new_mono_ty_args next_mono_args, Iter.append new_poly_ty_args next_poly_args
+
+let apply_subst_map_not_stupid mono_map poly_map new_poly_subst_all old_poly_subst_all bounds =
+    (* the mono map is only usefull to compute the bounds*)
+    (* we apply the new poly subst to all poly type arguments *)
+    (* we only apply the old poly subst to the new poly type arguments *)
+
+    let apply_subst_fun_sym fun_sym (old_poly_ty_args, new_poly_ty_args) (acc_mono_map, acc_poly_map) =
+        let all_mono_ty_args = ArgMap.find fun_sym mono_map in
+        let max_mono_bound = max_nb (Iter.length (fst all_mono_ty_args) + Iter.length (snd all_mono_ty_args)) bounds.mono_clause in
+        let max_poly_bound = max_nb (Iter.length old_poly_ty_args + Iter.length new_poly_ty_args) bounds.poly_clause in
+
+        let generate_unique subst_all poly_ty_args mono_bound poly_bound =
+            let mono_res, poly_res = generate_ty_args subst_all poly_ty_args mono_bound poly_bound in
+            remove_duplicates ~eq:ty_arg_eq mono_res, remove_duplicates ~eq:ty_arg_eq poly_res
+        in
+        
+        (* new subst with new poly type args *)
+        (* note, using numbers instead of something like new_new_old_mono_ty args for obvious reasons, maybe could find a better way*)
+        let new_mono_ty_args_1, new_poly_ty_args_1 = generate_unique new_poly_subst_all new_poly_ty_args max_mono_bound max_poly_bound in
+
+        let new_mono_bound = max_mono_bound - Iter.length new_mono_ty_args_1 in
+        let new_poly_bound = max_mono_bound - Iter.length new_poly_ty_args_1 in
+        (* new subst with old poly type args *)
+        let new_mono_ty_args_2, new_poly_ty_args_2 = generate_unique new_poly_subst_all old_poly_ty_args new_mono_bound new_poly_bound in
+
+
+        let new_mono_bound = max_mono_bound - Iter.length new_mono_ty_args_2 in
+        let new_poly_bound = max_mono_bound - Iter.length new_poly_ty_args_2 in
+        (* old subst with new_poly type args*)
+        let new_mono_ty_args_3, new_poly_ty_args_3 = generate_unique old_poly_subst_all new_poly_ty_args new_mono_bound new_poly_bound in
+
+        (* note that if the same type arguments are generated over the different iterations (probably shouldn't be possible unless
+         * and new subst overlap) then we generate less type arguments than we could have *)
+        let all_new_mono_ty_args = Iter.append new_mono_ty_args_1 (Iter.append new_mono_ty_args_2 new_mono_ty_args_3) in
+        let all_new_poly_ty_args = Iter.append new_poly_ty_args_1 (Iter.append new_poly_ty_args_2 new_poly_ty_args_3) in
+        (*Printf.printf "we have %i new mono ty args\n" (Iter.length all_new_mono_ty_args);*)
+        ArgMap.add fun_sym all_new_mono_ty_args acc_mono_map, ArgMap.add fun_sym all_new_poly_ty_args acc_poly_map
+    in
+
+    ArgMap.fold apply_subst_fun_sym poly_map (ArgMap.empty, ArgMap.empty)
+
+        
+        
+let count = ref 0
+        
+
+    
 (* takes a map from functions symbols to sets (iter for now) of monomorphic type arguments
  * takes an array of literals
  * takes a map from clause_ids to a map of function symbols to sets (iter for now) of monomorphic type arguments
@@ -350,12 +413,16 @@ let mono_step_clause mono_type_args_map poly_type_args_map susbt_clause_map curr
     let new_poly_subst_all, old_poly_subst_all = derive_type_arg_subst mono_type_args_map poly_type_args_map bounds in
     let subst_iter_all = iter_subst_union new_poly_subst_all old_poly_subst_all in
 
+    (*if !count = 0 then Printf.printf "we have %i substitutions\n" (Iter.length subst_iter_all);*)
+
     (*apply the substitutions to the poly type arguments*)
     (*split them into the new_mono and new_poly type arguments*)
     (* Note: i have just realised that this is absolutely insane, we generate god knows how many substitutions per clause and apply each of them to all the
      * polymorphic type arguments in the current clause (near 15 000 in total) and after all that we truncate the resulting type_arg_iters making all of 
      * this completely pointless, i could not imagine writting a dummer program*)
-    let new_mono_map_all, new_poly_map_all = apply_subst_map (ArgMap.map fst mono_type_args_map) poly_type_args_map new_poly_subst_all old_poly_subst_all in
+    (*let new_mono_map_all, new_poly_map_all = apply_subst_map (ArgMap.map fst mono_type_args_map) poly_type_args_map new_poly_subst_all old_poly_subst_all in*)
+    let new_mono_map_all, new_poly_map_all = apply_subst_map_not_stupid mono_type_args_map poly_type_args_map new_poly_subst_all old_poly_subst_all bounds in
+
 
     (* truncationg the new type arguments according to the bounds *)
     (* TODO factorise with similar truncation done in mono_step for the monomorphic map*)
@@ -367,10 +434,9 @@ let mono_step_clause mono_type_args_map poly_type_args_map susbt_clause_map curr
             new_poly_map_all
     in
 
-    new_mono_map_all, new_poly_map, (update_susbt_map subst_iter_all susbt_clause_map curr_iteration)
+    new_mono_map_all, new_poly_map_all, (update_susbt_map subst_iter_all susbt_clause_map curr_iteration)
 
 
-let count = ref 0
 
 (* takes a map from function symbols to sets (iter for now) of monomorphic type arguments
  * takes a map from clause_ids to a map from function symbols to sets (iter for now) of polymorphic type arguments
