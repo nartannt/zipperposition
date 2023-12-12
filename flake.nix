@@ -93,7 +93,7 @@
         devShells.default = pkgs.mkShell (with packages.default; {
           name = pname + "-dev";
           packages =
-            buildInputs ++ nativeBuildInputs ++
+            buildInputs ++ nativeBuildInputs ++ flamegraph ++
             (with ocamlPackages; [ merlin ocaml-lsp ocamlformat utop ]);
           # TODO: only keep one of merlin and ocaml-lsp, preferably ocaml-lsp
         });
