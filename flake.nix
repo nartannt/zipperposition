@@ -35,6 +35,7 @@
             };
           };
 
+
           default = ocamlPackages.buildDunePackage {
             pname = "zipperposition";
             version = "2.1";
@@ -93,7 +94,7 @@
         devShells.default = pkgs.mkShell (with packages.default; {
           name = pname + "-dev";
           packages =
-            buildInputs ++ nativeBuildInputs ++ flamegraph ++
+            buildInputs ++ nativeBuildInputs ++ 
             (with ocamlPackages; [ merlin ocaml-lsp ocamlformat utop ]);
           # TODO: only keep one of merlin and ocaml-lsp, preferably ocaml-lsp
         });
