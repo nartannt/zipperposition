@@ -213,7 +213,6 @@ module Make(E : Env.S) : S with module Env = E = struct
               refutation_found := true;
             (*Printf.printf "we got that bool: %b!\n" !refutation_found;*)
           done;
-          Printf.printf "and now?\n\n";
           if !refutation_found then (
             let clause_ids = ref [] in
             (try 
@@ -371,7 +370,6 @@ module Make(E : Env.S) : S with module Env = E = struct
         (*FileUtil.cp [prob_name] FilePath.current_dir;*)
         match run_e prob_name with
         | Some ids ->
-          Printf.printf "\nwe got something?\n";
           assert(not (CCList.is_empty ids));
 
           let clauses = List.map (fun id -> 
