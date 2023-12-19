@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 (** {1 Inductive Constants and Cases}
@@ -15,7 +14,6 @@ type t
     [s^n(0)] in any model. *)
 
 exception InvalidDecl of string
-
 exception NotAnInductiveConstant of ID.t
 
 val id_as_cst : ID.t -> t option
@@ -39,11 +37,9 @@ val is_sub : t -> bool
 (** Is the constant a sub-constant (i.e. a subterm of a case in a coverset)? *)
 
 val id_is_sub : ID.t -> bool
-
 val equal : t -> t -> bool
 val compare : t -> t -> int
 val hash : t -> int
-
 val id : t -> ID.t
 val to_term : t -> Term.t
 val ty : t -> Type.t
@@ -52,7 +48,6 @@ val same_type : t -> t -> bool
 (** Do these two inductive constants have the same type? *)
 
 val pp : t CCFormat.printer
-
 val depth : t -> int
 
 val dominates : t -> t -> bool
@@ -85,4 +80,5 @@ val ind_skolem_depth : ID.t -> int
 (**/**)
 
 exception Payload_cst of t
+
 (**/**)

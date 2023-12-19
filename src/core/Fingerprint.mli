@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 (** {1 Fingerprint term indexing} *)
@@ -28,7 +27,7 @@ val fp7 : fingerprint_fun
 val fp7m : fingerprint_fun
 val fp16 : fingerprint_fun
 
-module Make(X : Set.OrderedType) : sig
+module Make (X : Set.OrderedType) : sig
   include Index.TERM_IDX with type elt = X.t
 
   val default_fp : fingerprint_fun
@@ -37,8 +36,6 @@ module Make(X : Set.OrderedType) : sig
   (** Empty index, using the given fingerprint function *)
 
   val get_fingerprint : t -> fingerprint_fun
-
   val update_leaf : t -> Term.t -> (Leaf.elt -> bool) -> t
-
   val pp_keys : t -> unit
 end

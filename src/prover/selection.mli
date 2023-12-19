@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 (** {1 Selection functions} *)
@@ -14,7 +13,6 @@ open Logtk
 *)
 
 type t = Literal.t array -> CCBV.t
-
 type parametrized = strict:bool -> ord:Ordering.t -> t
 
 val no_select : t
@@ -34,27 +32,27 @@ val except_RR_horn : parametrized -> parametrized
 val default : ord:Ordering.t -> t
 (** Default selection function *)
 
-val e_sel  : blocker:(int -> Literal.t -> bool) -> ord:Ordering.t -> t
+val e_sel : blocker:(int -> Literal.t -> bool) -> ord:Ordering.t -> t
 (** Selection function  identical to E's 
     SelectMaxLComplexAvoidPosPred  *)
 
-val e_sel2  : blocker:(int -> Literal.t -> bool) -> ord:Ordering.t -> t
+val e_sel2 : blocker:(int -> Literal.t -> bool) -> ord:Ordering.t -> t
 (** Selection function  identical to E's 
     SelectCQIPrecWNTNp  *)
 
-val e_sel3  : blocker:(int -> Literal.t -> bool) -> ord:Ordering.t -> t
+val e_sel3 : blocker:(int -> Literal.t -> bool) -> ord:Ordering.t -> t
 (** Selection function  identical to E's 
     SelectComplexG *)
 
-val e_sel5  : blocker:(int -> Literal.t -> bool) -> ord:Ordering.t -> t
+val e_sel5 : blocker:(int -> Literal.t -> bool) -> ord:Ordering.t -> t
 (** Selection function  identical to E's 
     SelectNDepth2OptimalLiteral *)
 
-val e_sel6  : blocker:(int -> Literal.t -> bool) -> ord:Ordering.t -> t
+val e_sel6 : blocker:(int -> Literal.t -> bool) -> ord:Ordering.t -> t
 (** Selection function  identical to E's 
     SelectLargestOrientable *)
 
-val e_sel7  : blocker:(int -> Literal.t -> bool) -> ord:Ordering.t -> t
+val e_sel7 : blocker:(int -> Literal.t -> bool) -> ord:Ordering.t -> t
 (** Selection function  identical to E's 
     SelectComplexExceptRRHorn *)
 
@@ -98,14 +96,14 @@ val e_sel17 : blocker:(int -> Literal.t -> bool) -> ord:Ordering.t -> t
 (** Selection function  identical to E's 
     SelectUnlessUniqMaxOptimalLiteral *)
 
-val ho_sel  : blocker:(int -> Literal.t -> bool) -> ord:Ordering.t -> t
+val ho_sel : blocker:(int -> Literal.t -> bool) -> ord:Ordering.t -> t
 (** Selection function that tries to take 
     into account the number of nested applied variables.
 
     The assumption is that they are hard for unification.
 *)
 
-val from_string : ord:Ordering.t -> string -> (t * bool)
+val from_string : ord:Ordering.t -> string -> t * bool
 (** selection function from string (may fail) --
     returns functiona and a boolean saying whether function
     retains completeness *)

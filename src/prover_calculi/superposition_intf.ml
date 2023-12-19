@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 open Logtk
@@ -22,24 +21,23 @@ module type S = sig
 
   (** {5 Inference Rules} *)
 
-  val infer_active: Env.binary_inf_rule
+  val infer_active : Env.binary_inf_rule
   (** superposition where given clause is active *)
 
-  val infer_passive: Env.binary_inf_rule
+  val infer_passive : Env.binary_inf_rule
   (** superposition where given clause is passive *)
 
-  val infer_equality_resolution: Env.unary_inf_rule
-
-  val infer_equality_factoring: Env.unary_inf_rule
+  val infer_equality_resolution : Env.unary_inf_rule
+  val infer_equality_factoring : Env.unary_inf_rule
 
   (** {5 Extraction of clauses from the queue (HO feature)} *)
 
-  val extract_from_stream_queue: Env.generate_rule
+  val extract_from_stream_queue : Env.generate_rule
   (** Extracts at most as many clauses from the stream queue as there are
       streams in the queue. If called with [~full=true] extracts only one clause
       but may loop forever. *)
 
-  val extract_from_stream_queue_fix_stm: Env.generate_rule
+  val extract_from_stream_queue_fix_stm : Env.generate_rule
   (** Same as [extract_from_stream_queue] with a different extraction heuristic
       If possible, all clauses are taken from the first stream *)
 
@@ -63,10 +61,7 @@ module type S = sig
   val subsumes : Literal.t array -> Literal.t array -> bool
   (** subsumes c1 c2 iff c1 subsumes c2 *)
 
-  val subsumes_with :
-    Literals.t Scoped.t ->
-    Literals.t Scoped.t ->
-    (Subst.FO.t * Proof.tag list) option
+  val subsumes_with : Literals.t Scoped.t -> Literals.t Scoped.t -> (Subst.FO.t * Proof.tag list) option
   (** returns subsuming subst if the first clause subsumes the second one *)
 
   val eq_subsumes : Literal.t array -> Literal.t array -> bool

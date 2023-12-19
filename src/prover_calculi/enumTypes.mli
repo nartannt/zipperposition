@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 (** {1 Inference and simplification rules for "Enum Types"} *)
@@ -63,9 +62,7 @@ module type S = sig
 
   val pp_decl : decl CCFormat.printer
 
-  type declare_result =
-    | New of decl
-    | AlreadyDeclared of decl
+  type declare_result = New of decl | AlreadyDeclared of decl
 
   val declare_ty :
     proof:Proof.t ->
@@ -93,7 +90,7 @@ module type S = sig
   (** Register rules in the environment *)
 end
 
-module Make(E : Env.S) : S with module Env = E
+module Make (E : Env.S) : S with module Env = E
 
 (** {2 As Extension} *)
 

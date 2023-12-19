@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Logtk. See file "license" for more details. *)
 
 (** {1 Inner Terms} *)
@@ -20,32 +19,28 @@
 (* ho_weight presents the syntactic weight of eta-expanded
    term in which lambda prefixes are not counted in the weight.
    all other symbols (including bound and free variables)
-   take weight of 1  *)
+   take weight of 1 *)
 module I = Int32
 
-
-
 type t = private {
-  term : view;
-  ty : type_result;
-  mutable id : int;
-  mutable payload: exn;
-  props: I.t;
-  ho_weight : int lazy_t;
-}
+    term : view;
+    ty : type_result;
+    mutable id : int;
+    mutable payload : exn;
+    props : I.t;
+    ho_weight : int lazy_t;
+  }
 (** Abstract type of term *)
 
 and view = private
-  | Var of t HVar.t (** Free variable *)
-  | DB of int
-  | Bind of Binder.t * t * t (** Type, sub-term *)
-  | Const of ID.t (** Constant *)
-  | App of t * t list (** Uncurried application *)
-  | AppBuiltin of Builtin.t * t list (** For representing special constructors *)
+    | Var of t HVar.t  (** Free variable *)
+    | DB of int
+    | Bind of Binder.t * t * t  (** Type, sub-term *)
+    | Const of ID.t  (** Constant *)
+    | App of t * t list  (** Uncurried application *)
+    | AppBuiltin of Builtin.t * t list  (** For representing special constructors *)
 
-and type_result =
-  | NoType
-  | HasType of t
+and type_result = NoType | HasType of t
 
 type term = t
 
@@ -72,7 +67,6 @@ val same_l_gen : t list -> t list -> bool
 (** Physical equality on lists of terms, roughly the same as {!List.forall2 (==),
     tolerates different lengths} *)
 
-
 val ho_weight : t -> int
 
 (** {3 Constructors}
@@ -82,6 +76,7 @@ val ho_weight : t -> int
     a key), or, for variables, if the number is negative *)
 
 exception IllFormedTerm of string
+
 type nat = int
 
 val const : ty:t -> ID.t -> t
@@ -90,7 +85,7 @@ val bind : ty:t -> varty:t -> Binder.t -> t -> t
 val var : t HVar.t -> t
 val bvar : ty:t -> nat -> t
 val app_builtin : ty:t -> Builtin.t -> t list -> t
-val builtin: ty:t -> Builtin.t -> t
+val builtin : ty:t -> Builtin.t -> t
 
 val tType : t
 (** The root of the type system. It doesn't have a type.
@@ -108,11 +103,8 @@ val is_const : t -> bool
 val is_bind : t -> bool
 val is_app : t -> bool
 val is_tType : t -> bool
-
 val is_lambda : t -> bool
-
-val hashcons_stats : unit -> int*int*int*int*int*int
-
+val hashcons_stats : unit -> int * int * int * int * int * int
 val is_eta_reducible : t -> bool
 val is_beta_reducible : t -> bool
 val has_lambda : t -> bool
@@ -135,7 +127,6 @@ val set_payload_erase : t -> exn -> unit
 module Map : CCMap.S with type key = term
 module Set : CCSet.S with type elt = term
 module Tbl : CCHashtbl.S with type key = term
-
 module VarMap : CCMap.S with type key = t HVar.t
 module VarSet : CCSet.S with type elt = t HVar.t
 module VarTbl : CCHashtbl.S with type key = t HVar.t
@@ -186,7 +177,7 @@ end
 module Seq : sig
   val vars : t -> t HVar.t Iter.t
   val subterms : t -> t Iter.t
-  val subterms_depth : t -> (t * int) Iter.t  (* subterms with their depth *)
+  val subterms_depth : t -> (t * int) Iter.t (* subterms with their depth *)
   val symbols : t -> ID.t Iter.t
   val types : t -> t Iter.t
   val max_var : t HVar.t Iter.t -> int
@@ -219,11 +210,10 @@ val bind_vars : ty:t -> Binder.t -> t HVar.t list -> t -> t
     with body [t], and each intermediate result has type [ty]
     (not suitable for functions) *)
 
-val close_vars :  ty:t -> Binder.t -> t -> t
+val close_vars : ty:t -> Binder.t -> t -> t
 (** Close all free variables of the term using the binding symbol *)
 
-val fun_: t -> t -> t
-
+val fun_ : t -> t -> t
 val fun_l : t list -> t -> t
 
 val fun_of_fvars : t HVar.t list -> t -> t
@@ -256,10 +246,7 @@ val open_bind_fresh : Binder.t -> t -> t HVar.t list * t
 (** [open_bind_fresh λ (λxy. F)] returns [[v1,v2], F[v1/x,v2/y]]
     where [v1] and [v2] are fresh variables using {!HVar.fresh} *)
 
-val open_bind_fresh2 :
-  ?eq_ty:(t -> t -> bool) ->
-  Binder.t -> t -> t ->
-  t HVar.t list * t * t
+val open_bind_fresh2 : ?eq_ty:(t -> t -> bool) -> Binder.t -> t -> t -> t HVar.t list * t * t
 (** [open_bind_free2 λ (λxy. F) (λxyz. G)]
     returns [[v1,v2], F[v1/x,v2/y], λz.G[v1/x,v2/y]]
     where [v1] and [v2] are fresh variables using {!HVar.fresh}
@@ -277,7 +264,6 @@ val open_poly_fun : t -> int * t list * t
       and the list of all its arguments *)
 
 val open_bind : Binder.t -> t -> t list * t
-
 val open_bind2 : Binder.t -> t -> t -> t list * t * t list * t
 
 val mk_fun : ty_l:t list -> t -> t
@@ -289,7 +275,6 @@ val is_ground : t -> bool
 (** {3 Misc} *)
 
 val size : t -> int
-
 val depth : t -> int
 
 val head : t -> ID.t option
@@ -298,7 +283,7 @@ val head : t -> ID.t option
 val type_is_unifiable : t -> bool
 (** Can we (syntactically) unify terms of this type? *)
 
-val type_non_unifiable_tags: t -> Builtin.Tag.t list
+val type_non_unifiable_tags : t -> Builtin.Tag.t list
 (** Theory tags that justify this type not being unifiable *)
 
 val type_is_prop : t -> bool
@@ -313,11 +298,10 @@ val as_app : t -> t * t list
 
 val as_var : t -> t HVar.t option
 val as_var_exn : t -> t HVar.t
-
 val as_const : t -> ID.t option
 val as_const_exn : t -> ID.t
-
 val as_bvar_exn : t -> int
+
 val is_bvar_i : int -> t -> bool
 (** [is_bvar_i n t] is [true] iff [t = bvar i] *)
 
@@ -333,20 +317,16 @@ val show_type_arguments : bool ref
 (** Parameter for printing/hiding type arguments in terms *)
 
 include Interfaces.PRINT with type t := t
-include Interfaces.PRINT_DE_BRUIJN with type t := t
-                                    and type term := t
+include Interfaces.PRINT_DE_BRUIJN with type t := t and type term := t
 
 val pp_var : t HVar.t CCFormat.printer
 
 val add_default_hook : print_hook -> unit
 (** Add a print hook that will be used from now on *)
 
-val default_hooks: unit -> print_hook list
-
+val default_hooks : unit -> print_hook list
 val debugf : t CCFormat.printer
-
 val pp_zf : t CCFormat.printer
-
 val pp_in : Output_format.t -> t CCFormat.printer
 
 (* TODO: path-selection operation (for handling general-data in TPTP), see

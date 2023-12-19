@@ -24,19 +24,18 @@ type t = private InnerTerm.t
     with explicit conversion *)
 
 type ty = t
-
 type builtin = TType | Prop | Term | Rat | Int | Real
 
 val pp_builtin : builtin CCFormat.printer
 val builtin_conv : builtin -> Builtin.t
 
 type view = private
-  | Builtin of builtin
-  | Var of t HVar.t
-  | DB of int
-  | App of ID.t * t list (** parametrized type *)
-  | Fun of t list * t (** Function type (left to right, no left-nesting) *)
-  | Forall of t (** explicit quantification using De Bruijn index *)
+    | Builtin of builtin
+    | Var of t HVar.t
+    | DB of int
+    | App of ID.t * t list  (** parametrized type *)
+    | Fun of t list * t  (** Function type (left to right, no left-nesting) *)
+    | Forall of t  (** explicit quantification using De Bruijn index *)
 
 val view : t -> view
 (** Type-centric view of the head of this type.
@@ -53,7 +52,6 @@ val is_const : t -> bool
 val is_fun : t -> bool
 val is_forall : t -> bool
 val is_prop : t -> bool
-
 val as_var_exn : t -> t HVar.t
 
 val hash_mod_alpha : t -> int
@@ -67,7 +65,6 @@ val term : t
 val int : t
 val rat : t
 val real : t
-
 val var : t HVar.t -> t
 
 val var_of_int : int -> t
@@ -97,7 +94,7 @@ val forall_fvars : t HVar.t list -> t -> t
 val bvar : int -> t
 (** bound variable *)
 
-val (==>) : t list -> t -> t
+val ( ==> ) : t list -> t -> t
 (** General function type. [l ==> x] is the same as [x] if [l]
     is empty. Invariant: the return type is never a function type. *)
 
@@ -111,8 +108,8 @@ val cast_var_unsafe : InnerTerm.t HVar.t -> t HVar.t
 (** {2 Definition} *)
 
 type def =
-  | Def_unin of int (* number of type variables *)
-  | Def_data of int * ty list (* data type with number of variables and cstors *)
+    | Def_unin of int (* number of type variables *)
+    | Def_data of int * ty list (* data type with number of variables and cstors *)
 
 val def : ID.t -> def option
 (** Access the definition of a type *)
@@ -132,7 +129,9 @@ module Tbl : CCHashtbl.S with type key = t
 
 module Seq : sig
   val vars : t -> t HVar.t Iter.t
-  val sub : t -> t Iter.t (** Subterms *)
+
+  val sub : t -> t Iter.t
+  (** Subterms *)
 
   val symbols : t -> ID.t Iter.t
   val add_set : Set.t -> t Iter.t -> Set.t
@@ -156,9 +155,7 @@ val vars : t -> t HVar.t list
 val close_forall : t -> t
 (** bind free variables *)
 
-type arity_result =
-  | Arity of int * int
-  | NoArity
+type arity_result = Arity of int * int | NoArity
 
 val arity : t -> arity_result
 (** Number of arguments the type expects.
@@ -240,9 +237,9 @@ val is_unifiable : t -> bool
 
 include Interfaces.PRINT_DE_BRUIJN with type term := t and type t := t
 include Interfaces.PRINT with type t := t
+
 val pp_surrounded : t CCFormat.printer
 val pp_typed_var : t HVar.t CCFormat.printer
-
 val mangle : t -> string
 
 (** {2 TPTP-specific printer and types} *)
@@ -250,24 +247,31 @@ val mangle : t -> string
 module TPTP : sig
   include Interfaces.PRINT_DE_BRUIJN with type term := t and type t := t
   include Interfaces.PRINT with type t := t
+
   val pp_typed_var : t HVar.t CCFormat.printer
   val pp_ho : ?depth:int -> CCFormat.t -> t -> unit
 
   (** {2 Basic types} *)
 
-  val i : t       (** individuals *)
+  val i : t
+  (** individuals *)
 
-  val o : t       (** propositions *)
+  val o : t
+  (** propositions *)
 
-  val int : t     (** integers *)
+  val int : t
+  (** integers *)
 
-  val rat : t     (** rationals *)
+  val rat : t
+  (** rationals *)
 
-  val real : t    (** reals *)
+  val real : t
+  (** reals *)
 end
 
 module ZF : sig
   include Interfaces.PRINT with type t := t
+
   val pp_typed_var : t HVar.t CCFormat.printer
 end
 
@@ -277,17 +281,16 @@ val pp_in : Output_format.t -> t CCFormat.printer
 
 module Conv : sig
   type ctx
+
   val create : unit -> ctx
   val copy : ctx -> ctx
   val clear : ctx -> unit
-
   val enter_bvar : ctx -> VarMap.key -> int option
-  val exit_bvar  : handle:int CCOpt.t -> ctx -> VarMap.key -> unit
-  val find_bvar  : ctx -> VarMap.key -> int option
+  val exit_bvar : handle:int CCOpt.t -> ctx -> VarMap.key -> unit
+  val find_bvar : ctx -> VarMap.key -> int option
   val get_maxvar : ctx -> int
   val incr_maxvar : ctx -> unit
   val set_maxvar : ctx -> int -> unit
-
 
   val of_simple_term : ctx -> TypedSTerm.t -> t option
   (** convert a simple typed term into a type. The term is assumed to be
@@ -308,18 +311,16 @@ module Conv : sig
   val of_simple_term_exn : ctx -> TypedSTerm.t -> t
   (** @raise Invalid_argument if conversion is impossible *)
 
-  val to_simple_term :
-    ?env:TypedSTerm.t Var.t DBEnv.t ->
-    ctx ->
-    t ->
-    TypedSTerm.t
-    (** convert a type to a prolog term.
+  val to_simple_term : ?env:TypedSTerm.t Var.t DBEnv.t -> ctx -> t -> TypedSTerm.t
+  (** convert a type to a prolog term.
         @param env the current environment for De Bruijn indices *)
 end
 
-
 (**/**)
-val rebuild_rec : ?env:t list -> t -> t (** rebuild recursively and checks *)
+
+val rebuild_rec : ?env:t list -> t -> t
+(** rebuild recursively and checks *)
 
 val unsafe_eval_db : t list -> t -> t
+
 (**/**)

@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 (** {1 Inductive Types} *)
@@ -9,42 +8,36 @@
 
 val section : Util.Section.t
 
+type constructor = private { cstor_name : ID.t; cstor_ty : Type.t; cstor_args : (Type.t * projector) list }
 (** Constructor for an inductive type *)
-type constructor = private {
-  cstor_name: ID.t;
-  cstor_ty: Type.t;
-  cstor_args: (Type.t * projector) list;
-}
 
-(** A projector for a given constructor and argument position *)
 and projector = private {
-  p_id: ID.t;
-  p_ty: Type.t;
-  p_index: int; (* index of projected argument *)
-  p_cstor: constructor lazy_t;
-}
+    p_id : ID.t;
+    p_ty : Type.t;
+    p_index : int; (* index of projected argument *)
+    p_cstor : constructor lazy_t;
+  }
+(** A projector for a given constructor and argument position *)
 
 (** {5 Inductive Types} *)
 
-(** An inductive type, along with its set of constructors *)
 type t = private {
-  ty_id: ID.t; (* name *)
-  ty_vars: Type.t HVar.t list; (* list of variables *)
-  ty_pattern: Type.t; (* equal to  [id ty_vars] *)
-  ty_constructors : constructor list;
-  (* constructors, all returning [pattern] and containing
-     no other type variables than [ty_vars] *)
-  ty_is_rec: bool lazy_t;
-  (* true iff the type is (mutually) recursive *)
-  ty_proof: Proof.t;
-}
+    ty_id : ID.t; (* name *)
+    ty_vars : Type.t HVar.t list; (* list of variables *)
+    ty_pattern : Type.t; (* equal to  [id ty_vars] *)
+    ty_constructors : constructor list;
+    (* constructors, all returning [pattern] and containing
+       no other type variables than [ty_vars] *)
+    ty_is_rec : bool lazy_t;
+    (* true iff the type is (mutually) recursive *)
+    ty_proof : Proof.t;
+  }
+(** An inductive type, along with its set of constructors *)
 
 val pp : t CCFormat.printer
 
 exception InvalidDecl of string
-
 exception NotAnInductiveType of ID.t
-
 exception NotAnInductiveConstructor of ID.t
 
 val declare_ty : ID.t -> ty_vars:Type.t HVar.t list -> constructor list -> proof:Proof.t -> t
@@ -71,9 +64,7 @@ val is_inductive_type : Type.t -> bool
     registered type (registered with {!declare_ty}). *)
 
 val is_inductive_simple_type : TypedSTerm.t -> bool
-
 val is_recursive : t -> bool
-
 val proof : t -> Proof.t
 
 (** {5 Constructors} *)
@@ -97,13 +88,11 @@ val contains_inductive_types : Term.t -> bool
 
 (** {5 Projectors} *)
 
-val projector_id: projector -> ID.t
-val projector_ty: projector -> Type.t
-val projector_idx: projector -> int
-val projector_cstor: projector -> constructor
-
+val projector_id : projector -> ID.t
+val projector_ty : projector -> Type.t
+val projector_idx : projector -> int
+val projector_cstor : projector -> constructor
 val as_projector : ID.t -> projector option
-
 
 (**/**)
 

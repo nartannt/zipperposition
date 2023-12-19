@@ -7,6 +7,9 @@ all: build test-cached
 
 DUNE_OPTS= -j $(J) --profile=release
 
+fmt:
+	ocamlformat -i src/*/*.{ml,mli} --margin=112 --no-comment-check --quiet
+
 build:
 	@dune build @install $(DUNE_OPTS)
 

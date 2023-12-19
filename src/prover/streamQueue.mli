@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 (** {1 Priority Queue of ho-streams} *)
@@ -15,12 +14,12 @@ module type S = StreamQueue_intf.S
 
 module type ARG = sig
   module Stm : Stream.S
-  val state: unit -> Flex_state.t
+
+  val state : unit -> Flex_state.t
 end
 
 val k_guard : int Flex_state.key
 val k_ratio : int Flex_state.key
 val k_clause_num : int Flex_state.key
 
-
-module Make(A : ARG) : S with module Stm = A.Stm
+module Make (A : ARG) : S with module Stm = A.Stm

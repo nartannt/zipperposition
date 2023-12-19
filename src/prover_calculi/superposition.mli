@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 (** {1 Inference and simplification rules for the superposition calculus} *)
@@ -21,12 +20,11 @@ val k_unif_alg : (Term.t Scoped.t -> Term.t Scoped.t -> Unif_subst.t CCOpt.t OSe
 val k_ho_basic_rules : bool Flex_state.key
 val get_unif_module : (module Env.S) -> (module UnifFramework.US)
 
-
 val register : sup:(module S) -> unit
 (** Register the superposition module to its Environment's
     mixtbl. Done automatically by the {!extension}. *)
 
-module Make(Env : Env.S) : S with module Env = Env
+module Make (Env : Env.S) : S with module Env = Env
 
 (** {2 As Extension}
     Extension named "superposition" *)

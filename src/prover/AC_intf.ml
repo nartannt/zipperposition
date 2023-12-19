@@ -1,12 +1,8 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 open Logtk
 
-type spec = {
-  sym : ID.t;
-  ty : Type.t;
-}
+type spec = { sym : ID.t; ty : Type.t }
 
 module type S = sig
   module Env : Env.S

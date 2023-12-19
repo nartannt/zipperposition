@@ -15,13 +15,13 @@
 
 (** A position is a path in a tree *)
 type t =
-  | Stop
-  | Type of t (** Switch to type *)
-  | Left of t (** Left term in curried application *)
-  | Right of t (** Right term in curried application, and subterm of binder *)
-  | Head of t (** Head of uncurried term *)
-  | Arg of int * t (** argument term in uncurried term, or in multiset *)
-  | Body of t (** Body of binder or horn clause *)
+    | Stop
+    | Type of t  (** Switch to type *)
+    | Left of t  (** Left term in curried application *)
+    | Right of t  (** Right term in curried application, and subterm of binder *)
+    | Head of t  (** Head of uncurried term *)
+    | Arg of int * t  (** argument term in uncurried term, or in multiset *)
+    | Body of t  (** Body of binder or horn clause *)
 
 type position = t
 
@@ -32,7 +32,6 @@ val right : t -> t
 val head : t -> t
 val body : t -> t
 val arg : int -> t -> t
-
 val size : t -> int
 
 val opp : t -> t
@@ -53,9 +52,7 @@ val is_strict_prefix : t -> t -> bool
 val compare : t -> t -> int
 val equal : t -> t -> bool
 val hash : t -> int
-
 val num_of_funs : t -> int
-
 val until_first_fun : t -> t
 
 include Interfaces.PRINT with type t := t
@@ -101,7 +98,6 @@ module Build : sig
   (** Add [left] at the end *)
 
   val body : t -> t
-
   val head : t -> t
 
   val arg : int -> t -> t
@@ -121,17 +117,15 @@ module With : sig
 
   val get : 'a t -> 'a
   val pos : _ t -> position
-
   val make : 'a -> position -> 'a t
   val of_pair : 'a * position -> 'a t
-
   val map_pos : (position -> position) -> 'a t -> 'a t
-
   val map : ('a -> 'b) -> 'a t -> 'b t
 
   module Infix : sig
-    val (>|=) : 'a t -> ('a -> 'b) -> 'b t
+    val ( >|= ) : 'a t -> ('a -> 'b) -> 'b t
   end
+
   include module type of Infix
 
   val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool

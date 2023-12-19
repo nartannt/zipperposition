@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 (** {1 Basic signal for multiple-callbacks Observer} *)
@@ -18,9 +17,7 @@ val create : unit -> 'a t
 val send : 'a t -> 'a -> unit
 (** Trigger the signal *)
 
-type handler_response =
-  | ContinueListening
-  | StopListening
+type handler_response = ContinueListening | StopListening
 
 val on : 'a t -> ('a -> handler_response) -> unit
 (** Register a handler to the signal; the handler returns [true]
@@ -39,7 +36,6 @@ val propagate : 'a t -> 'a t -> unit
 (** {2 Combinators} *)
 
 val map : 'a t -> ('a -> 'b) -> 'b t
-
 val filter : 'a t -> ('a -> bool) -> 'a t
 
 val set_exn_handler : (exn -> unit) -> unit

@@ -1,28 +1,24 @@
-
 (* This file is free software, part of Logtk. See file "license" for more details. *)
 
 (** {1 Polynomial} *)
-
 
 module type IntegerModule = sig
   type t
 
   val zero : t
   val one : t
-
   val add : t -> t -> t
   val mult : int -> t -> t
   val compare : t -> t -> int
-
   val pp : Format.formatter -> t -> unit
 end
 
 module type OrderedType = sig
   type t
+
   val compare : t -> t -> int
   val pp : Format.formatter -> t -> unit
 end
-
 
 module type S = sig
   type t
@@ -31,9 +27,7 @@ module type S = sig
 
   val const : coeff -> t
   val indet : indet -> t
-
   val add : t -> t -> t
-
   val mult_const : int -> t -> t
   val mult_indet : indet -> t -> t
 
@@ -47,7 +41,6 @@ module type S = sig
       If some coefficients are < and some are >, return 0. *)
 
   val equal : t -> t -> bool
-
   val pp : Format.formatter -> t -> unit
 end
 

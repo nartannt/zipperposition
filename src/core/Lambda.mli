@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Libzipperposition. See file "license" for more details. *)
 
 (** {1 Lambda-Calculus} *)
@@ -32,18 +31,13 @@ val eta_reduce : ?expand_quant:bool -> ?full:bool -> term -> term
 
 val is_lambda_pattern : term -> bool
 
-
 (** Low level interface *)
 module Inner : sig
   type term = InnerTerm.t
 
   val whnf : term -> term
-
   val snf : term -> term
-
   val eta_expand : term -> term
-
   val eta_reduce : ?expand_quant:bool -> ?full:bool -> term -> term
-
   val beta_red_head : term -> term
 end

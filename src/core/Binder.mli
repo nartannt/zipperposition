@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Logtk. See file "license" for more details. *)
 
 (** {1 Binders for Logic} *)
@@ -7,11 +6,7 @@
 
     @since 1.5 *)
 
-type t =
-  | Exists
-  | Forall
-  | ForallTy
-  | Lambda
+type t = Exists | Forall | ForallTy | Lambda
 
 include Interfaces.HASH with type t := t
 include Interfaces.ORD with type t := t

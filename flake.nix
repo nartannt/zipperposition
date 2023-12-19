@@ -49,6 +49,7 @@
 
             buildInputs = with ocamlPackages; [
               containers
+              ocamlformat
               containers-data
               iter
               menhirLib

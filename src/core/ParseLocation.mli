@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 (** {1 Location in a file} *)
@@ -10,20 +9,11 @@
     an end position (line, column) + an optional file name.
 *)
 
-type t = {
-  file : string;
-  start_line : int;
-  start_column : int;
-  stop_line : int;
-  stop_column : int;
-}
+type t = { file : string; start_line : int; start_column : int; stop_line : int; stop_column : int }
 
 val mk : string -> int -> int -> int -> int -> t
-
-val mk_pair : string -> (int * int) -> (int * int) -> t
-
+val mk_pair : string -> int * int -> int * int -> t
 val mk_pos : Lexing.position -> Lexing.position -> t
-
 val eq : t -> t -> bool
 val hash : t -> int
 
@@ -40,11 +30,11 @@ val smaller : t -> t -> bool
     [p1] is a sub-location of [p2] (interval inclusion) *)
 
 module Infix : sig
-  val (<+>) : t option -> t option -> t option
+  val ( <+> ) : t option -> t option -> t option
   (** Combine two optional locations. Left has priority *)
 end
-include module type of Infix
 
+include module type of Infix
 include Interfaces.PRINT with type t := t
 
 val pp_opt : t option CCFormat.printer

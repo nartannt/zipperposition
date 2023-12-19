@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 open Logtk
@@ -76,10 +75,10 @@ module type S = sig
       Must return [None] if the clause is unmodified *)
 
   type 'a conversion_result =
-    | CR_skip (** rule didn't fire *)
-    | CR_drop (** drop the clause from the proof state *)
-    | CR_add of 'a (** add this to the result *)
-    | CR_return of 'a (** shortcut the remaining rules, return this *)
+      | CR_skip  (** rule didn't fire *)
+      | CR_drop  (** drop the clause from the proof state *)
+      | CR_add of 'a  (** add this to the result *)
+      | CR_return of 'a  (** shortcut the remaining rules, return this *)
 
   type clause_conversion_rule = Statement.clause_t -> C.t list conversion_result
   (** A hook to convert a particular statement into a list
@@ -102,7 +101,7 @@ module type S = sig
   val remove_active : C.t Iter.t -> unit
   (** Remove active clauses *)
 
-  val remove_simpl  : C.t Iter.t -> unit
+  val remove_simpl : C.t Iter.t -> unit
   (** Remove simplification clauses *)
 
   val get_passive : unit -> C.t Iter.t
@@ -141,7 +140,6 @@ module type S = sig
   val add_multi_simpl_rule : priority:int -> multi_simpl_rule -> unit
   (** Add a multi-clause simplification rule *)
 
-
   val add_cheap_multi_simpl_rule : multi_simpl_rule -> unit
   (** Add an efficient multi-clause simplification rule,
       that will be used to simplify newly generated clauses
@@ -160,7 +158,6 @@ module type S = sig
   (** Add a ho norm rule *)
 
   val get_ho_normalization_rule : unit -> term_norm_rule
-
   val add_immediate_simpl_rule : immediate_simplification_rule -> unit
 
   val add_lit_rule : string -> lit_rewrite_rule -> unit
@@ -168,21 +165,18 @@ module type S = sig
 
   val add_generate : priority:int -> string -> generate_rule -> unit
   (** Add a generation rule with assigned priority.
-      Rules with higher priority will be tried first. *) 
+      Rules with higher priority will be tried first. *)
 
   val add_clause_elimination_rule : priority:int -> string -> clause_elim_rule -> unit
-
   val cr_skip : _ conversion_result
   val cr_return : 'a -> 'a conversion_result
   val cr_add : 'a -> 'a conversion_result
-
   val add_clause_conversion : clause_conversion_rule -> unit
 
   val add_step_init : (unit -> unit) -> unit
   (** add a function to call before each saturation step *)
 
   val add_fragment_check : (C.t -> bool) -> unit
-
   val check_fragment : C.t -> bool
 
   (** {2 Use the Env} *)
@@ -207,13 +201,12 @@ module type S = sig
   val on_input_statement : Statement.clause_t Signal.t
   (** Triggered on every input statement *)
 
-  val on_forward_simplified : (C.t * (C.t option)) Signal.t
+  val on_forward_simplified : (C.t * C.t option) Signal.t
   (** Triggered when after the clause set is fully forward-simplified.
       First argument is the original clause c and the second one is Some c'
       if c simplifies into c' or None if c is deemed redundant *)
 
-  val convert_input_statements :
-    Statement.clause_t CCVector.ro_vector -> C.t Clause.sets
+  val convert_input_statements : Statement.clause_t CCVector.ro_vector -> C.t Clause.sets
   (** Convert raw input statements into clauses, triggering
       {! on_input_statement} *)
 
@@ -223,7 +216,6 @@ module type S = sig
   val ord : unit -> Ordering.t
   val precedence : unit -> Precedence.t
   val signature : unit -> Signature.t
-
   val pp : unit CCFormat.printer
   val pp_full : unit CCFormat.printer
 
@@ -238,7 +230,6 @@ module type S = sig
   (** checks if finite unification is used and whether the user wants
       to force storing all conclusions in the queues *)
 
-
   val get_finite_infs : 'a option OSeq.t CCList.t -> 'a CCList.t
   (** get finitely many conclusions from inference stream.
       NB: requires the use of terminating unification algorithms *)
@@ -246,7 +237,7 @@ module type S = sig
   val stats : unit -> stats
   (** Compute stats *)
 
-  val next_passive : unit  -> C.t option
+  val next_passive : unit -> C.t option
   (** Extract next passive clause *)
 
   val do_binary_inferences : C.t -> C.t Iter.t
@@ -299,7 +290,7 @@ module type S = sig
   val cheap_multi_simplify : C.t -> C.t list option
   (** Cheap simplifications that can result in multiple clauses (e.g. AVATAR splitting) *)
 
-  val immediate_simplify : C.t -> C.t Iter.t -> (C.t Iter.t)
+  val immediate_simplify : C.t -> C.t Iter.t -> C.t Iter.t
   (** Simplify given clause using its children. Given clause is
       removed from active set and result of this rule is added to passive set,
       if any of the registered rules suceeded *)

@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 (** {1 Priority Queue of clauses} *)
@@ -16,10 +15,9 @@ val profile_of_string : string -> profile
 
 val get_profile : unit -> profile
 val set_profile : profile -> unit
-
 val ignoring_orphans : unit -> bool
 val disable_ignoring_orphans : unit -> unit
 
 module type S = ClauseQueue_intf.S
 
-module Make(C : Clause.S) : S with module C = C
+module Make (C : Clause.S) : S with module C = C

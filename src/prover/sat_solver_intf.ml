@@ -1,14 +1,10 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 open Logtk
 
 type proof_step = Proof.Step.t
 type proof = Proof.t
-
-type result =
-  | Sat
-  | Unsat of proof
+type result = Sat | Unsat of proof
 
 exception WrongState of string
 
@@ -25,7 +21,6 @@ module type S = sig
       and must not have been already used. *)
 
   val add_clauses : proof:proof_step -> Lit.t list list -> unit
-
   val add_clause_seq : proof:proof_step -> Lit.t list Iter.t -> unit
 
   val check : full:bool -> unit -> result
@@ -51,7 +46,7 @@ module type S = sig
       return its value (which does not depend on the model).
       Otherwise return [None] *)
 
-  val all_proved: unit -> Lit.Set.t
+  val all_proved : unit -> Lit.Set.t
   (** Set of (signed) proved literals *)
 
   val set_printer : Lit.t CCFormat.printer -> unit
@@ -71,8 +66,8 @@ module type S = sig
       proved true at level 0 (see {!valuation_level})
       @raise Invalid_argument if the literal is not at level 0 *)
 
-  val setup: unit -> unit
+  val setup : unit -> unit
 
-  val clear: ?size:[ `Big | `Small | `Tiny ] -> unit -> unit
+  val clear : ?size:[ `Big | `Small | `Tiny ] -> unit -> unit
   (** Reset the SAT solver state *)
 end

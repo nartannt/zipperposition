@@ -28,19 +28,19 @@
 *)
 
 type 'a or_error = ('a, string) CCResult.t
-
 type type_ = TypedSTerm.t
 
-type untyped = STerm.t (** untyped term *)
+type untyped = STerm.t
+(** untyped term *)
 
-type typed = TypedSTerm.t (** typed term *)
+type typed = TypedSTerm.t
+(** typed term *)
 
 type loc = ParseLocation.t
 
 exception Error of string
 
 val section : Util.Section.t
-
 val _rw_forms_only : bool ref
 
 (** {2 Types for Builtins} *)
@@ -67,9 +67,9 @@ module Ctx : sig
   val create :
     ?def_as_rewrite:bool ->
     ?default:type_ ->
-    ?on_var:[`Default | `Infer] ->
-    ?on_undef:[`Warn | `Fail | `Guess] ->
-    ?on_shadow:[`Warn | `Ignore] ->
+    ?on_var:[ `Default | `Infer ] ->
+    ?on_undef:[ `Warn | `Fail | `Guess ] ->
+    ?on_shadow:[ `Warn | `Ignore ] ->
     implicit_ty_args:bool ->
     unit ->
     t
@@ -165,19 +165,16 @@ val constrain_term_type : ?loc:loc -> Ctx.t -> untyped -> type_ -> unit or_error
 type typed_statement = (typed, typed, type_) Statement.t
 
 val infer_statement_exn :
-  ?file:string ->
-  Ctx.t ->
-  UntypedAST.statement ->
-  typed_statement * typed_statement list
+  ?file:string -> Ctx.t -> UntypedAST.statement -> typed_statement * typed_statement list
 (** [infer_statement ctx ~f st] checks and convert [st] into a
     typed statements, and a list of auxiliary type declarations for symbols
     that were inferred implicitly. *)
 
 val infer_statements_exn :
   ?def_as_rewrite:bool ->
-  ?on_var:[`Infer | `Default] ->
-  ?on_undef:[`Warn | `Fail | `Guess] ->
-  ?on_shadow:[`Warn | `Ignore] ->
+  ?on_var:[ `Infer | `Default ] ->
+  ?on_undef:[ `Warn | `Fail | `Guess ] ->
+  ?on_shadow:[ `Warn | `Ignore ] ->
   ?ctx:Ctx.t ->
   ?file:string ->
   implicit_ty_args:bool ->
@@ -188,9 +185,9 @@ val infer_statements_exn :
 
 val infer_statements :
   ?def_as_rewrite:bool ->
-  ?on_var:[`Infer | `Default] ->
-  ?on_undef:[`Warn | `Fail | `Guess] ->
-  ?on_shadow:[`Warn | `Ignore] ->
+  ?on_var:[ `Infer | `Default ] ->
+  ?on_undef:[ `Warn | `Fail | `Guess ] ->
+  ?on_shadow:[ `Warn | `Ignore ] ->
   ?ctx:Ctx.t ->
   ?file:string ->
   implicit_ty_args:bool ->

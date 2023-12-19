@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 (** {1 Lazy List} *)
@@ -9,17 +8,12 @@
     if accessed again. This is important for lazy lists of elements
     that are expensive to compute. *)
 
-type 'a node =
-  | Nil
-  | Cons of 'a * 'a t
+type 'a node = Nil | Cons of 'a * 'a t
 and 'a t = 'a node Lazy.t
 
 val nil : 'a t
-
 val cons : 'a -> 'a t -> 'a t
-
 val take : int -> 'a t -> 'a t
-
 val of_fun : (int -> 'a option) -> 'a t
 
 val to_list : 'a t -> 'a list

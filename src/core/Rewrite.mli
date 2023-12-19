@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 (** {1 Rewriting on Terms and Literals} *)
@@ -40,7 +39,6 @@ module Term : sig
     val args : t -> term list
     val arity : t -> int
     val proof : t -> proof
-
     val as_lit : t -> Literal.t
 
     val make_const : proof:Proof.t -> ID.t -> Type.t -> term -> t
@@ -56,6 +54,7 @@ module Term : sig
 
   module Set : sig
     include CCSet.S with type elt = rule
+
     val pp : t CCFormat.printer
   end
 
@@ -64,6 +63,7 @@ module Term : sig
   (** Set of rules with their instantiation *)
   module Rule_inst_set : sig
     include CCSet.S with type elt = rule * Subst.t * Scoped.scope
+
     val pp : t CCFormat.printer
   end
 
@@ -80,11 +80,8 @@ module Term : sig
      whenever [f] is a defined constant with one rule which matches [l] *)
 
   val narrow_term :
-    ?subst:Unif_subst.t ->
-    scope_rules:Scoped.scope ->
-    term Scoped.t ->
-    (rule * Unif_subst.t) Iter.t
-    (** [narrow_term ~scope_rule t] finds the set of rules [(l --> r)]
+    ?subst:Unif_subst.t -> scope_rules:Scoped.scope -> term Scoped.t -> (rule * Unif_subst.t) Iter.t
+  (** [narrow_term ~scope_rule t] finds the set of rules [(l --> r)]
         in IDs and substitutions [sigma] such that [sigma(l) = sigma(t)]
         @param scope_rules used for rules (LEFT) *)
 end
@@ -96,6 +93,7 @@ module Lit : sig
 
   module Rule : sig
     type t = rule
+
     val lhs : t -> Literal.t
     val rhs : t -> Literal.t list list
     val proof : t -> proof
@@ -108,9 +106,7 @@ module Lit : sig
   end
 
   val normalize_clause :
-    Literals.t ->
-    (Literals.t list * rule * Subst.t * Scoped.scope *
-     Subst.Renaming.t * Proof.tag list) option
+    Literals.t -> (Literals.t list * rule * Subst.t * Scoped.scope * Subst.Renaming.t * Proof.tag list) option
   (** normalize literals of the clause w.r.t. rules, or return [None]
       if no rule applies. The input clause lives in scope 0. *)
 
@@ -119,28 +115,25 @@ module Lit : sig
     scope_rules:Scoped.scope ->
     Literal.t Scoped.t ->
     (rule * Unif_subst.t * Proof.tag list) Iter.t
-    (** [narrow_term rules lit] finds the set of rules [(l --> clauses) in rules]
+  (** [narrow_term rules lit] finds the set of rules [(l --> clauses) in rules]
         and substitutions [sigma] such that [sigma(l) = sigma(lit)]
         @param scope_rules used for rules (LEFT) *)
 end
 
 (** {2 Rules in General} *)
 
-type rule =
-  | T_rule of Term.rule
-  | L_rule of Lit.rule
+type rule = T_rule of Term.rule | L_rule of Lit.rule
 
 module Rule : sig
   type t = rule
+
   val of_term : Term.Rule.t -> t
   val of_lit : Lit.Rule.t -> t
   val proof : t -> proof
   val pp : t CCFormat.printer
-
   val as_proof : t -> Proof.t
 
-  val lit_as_proof_parent_subst :
-    Subst.Renaming.t -> Subst.t -> Lit.Rule.t Scoped.t -> Proof.parent
+  val lit_as_proof_parent_subst : Subst.Renaming.t -> Subst.t -> Lit.Rule.t Scoped.t -> Proof.parent
   (** Helper for clause rewriting *)
 
   val set_as_proof_parents : Term.Rule_inst_set.t -> Proof.parent list
@@ -161,17 +154,11 @@ module Defined_cst : sig
   type t = defined_cst
 
   val ty : t -> Type.t
-
   val rules : t -> rule_set
-
   val rules_seq : t -> rule Iter.t
-
   val rules_term_seq : t -> Term.rule Iter.t
-
   val rules_lit_seq : t -> Lit.rule Iter.t
-
   val defined_positions : t -> Defined_pos.Arr.t
-
   val level : t -> int
 
   val declare : ?level:int -> ID.t -> rule_set -> t
@@ -205,12 +192,12 @@ module Defined_cst : sig
 end
 
 val as_defined_cst : ID.t -> defined_cst option
-
 val is_defined_cst : ID.t -> bool
-
 val all_cst : Defined_cst.t Iter.t
 val all_rules : Rule.t Iter.t
 
 (**/**)
+
 exception Payload_defined_cst of defined_cst
+
 (**/**)

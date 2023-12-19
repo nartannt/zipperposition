@@ -8,7 +8,6 @@
     case it raises NotInFragment exception.
 *)
 
-
 module US = Unif_subst
 
 type subst = US.t
@@ -18,20 +17,24 @@ type subst = US.t
 module S : sig
   val apply : subst -> Term.t Scoped.t -> Term.t
   val pp : subst CCFormat.printer
-
 end
 
 exception NotUnifiable
 exception NotInFragment
 
-val eta_expand_otf : subst:subst -> scope:Scoped.scope -> Type.t list -> Type.t list -> Term.t -> Term.t -> Term.t * Term.t * Type.t list
+val eta_expand_otf :
+  subst:subst ->
+  scope:Scoped.scope ->
+  Type.t list ->
+  Type.t list ->
+  Term.t ->
+  Term.t ->
+  Term.t * Term.t * Type.t list
 
-val norm_deref :  Unif_subst.t -> Term.t Scoped.t -> Term.t
+val norm_deref : Unif_subst.t -> Term.t Scoped.t -> Term.t
 
-
-
+val unif_simple : ?subst:Subst.t -> scope:int -> Term.t -> Term.t -> US.t option
 (** Does unification on types (or other simple constructs) and catches
     exception in case of non-unifiability *)
-val unif_simple : ?subst:Subst.t -> scope:int -> Term.t -> Term.t -> US.t option
 
 val unify_scoped : ?subst:subst -> ?counter:int ref -> Term.t Scoped.t -> Term.t Scoped.t -> subst

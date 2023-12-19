@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Logtk. See file "license" for more details. *)
 
 (** {1 Unique Identifiers} *)
@@ -23,10 +22,10 @@
 *)
 
 type t = private {
-  id: int;
-  name: string;
-  mutable payload: exn list; (** Use [exn] as an open type for user-defined payload *)
-}
+    id : int;
+    name : string;
+    mutable payload : exn list;  (** Use [exn] as an open type for user-defined payload *)
+  }
 
 val make : string -> t
 (** Makes a fresh ID *)
@@ -39,12 +38,9 @@ val copy : t -> t
 val id : t -> int
 val name : t -> string
 val payload : t -> exn list
-
 val dummy_of_int : int -> t
-
-val payload_find: f:(exn -> 'a option) -> t -> 'a option
-
-val payload_pred: f:(exn -> bool) -> t -> bool
+val payload_find : f:(exn -> 'a option) -> t -> 'a option
+val payload_pred : f:(exn -> bool) -> t -> bool
 
 val set_payload : ?can_erase:(exn -> bool) -> t -> exn -> unit
 (** Set given exception as payload.
@@ -74,7 +70,6 @@ module Map : CCMap.S with type key = t
 module Set : CCSet.S with type elt = t
 module Tbl : CCHashtbl.S with type key = t
 
-
 exception Attr_infix of string
 (** Infix name for pretty-printing *)
 
@@ -87,21 +82,16 @@ exception Attr_parameter of int
 type skolem_kind = K_normal | K_after_cnf | K_lazy_cnf | K_ind (* inductive *)
 
 exception Attr_skolem of skolem_kind
-
 exception Attr_distinct
-
 exception Attr_comm
 exception Attr_assoc
-
 exception Attr_cnf_def
 (* Symbol is a name introduced during CNF *)
 
 val as_infix : t -> string option
 val is_infix : t -> bool
-
 val as_prefix : t -> string option
 val is_prefix : t -> bool
-
 val as_parameter : t -> int option
 val is_parameter : t -> bool
 

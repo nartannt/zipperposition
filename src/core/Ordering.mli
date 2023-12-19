@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 (** {1 Term Orderings} *)
@@ -30,9 +29,9 @@ val might_flip : t -> term -> term -> bool
     of tθ vs sθ cannot change when appending arguments. This function is allowed
     to overapproximate, i.e. we get no information if it returns true. *)
 
-val monotonic : t -> bool	
+val monotonic : t -> bool
 (** Is the ordering fully monotonic? Is it in particular compatible with arguments,	
-    i.e., t > s ==> t a > s a *)	
+    i.e., t > s ==> t a > s a *)
 
 val precedence : t -> Precedence.t
 (** Current precedence *)
@@ -59,6 +58,11 @@ val derived_ho_rpo : Precedence.t -> t
 (** Higher-order recursive path ordering derived via an encoding *)
 
 val compose : (term -> term -> Comparison.t * term * term) -> t -> t
+(** Takes a function that is going to be run before the chosen order and the
+    order. For example, if the first argument returns Eq, then the order is
+    determined by the second argument, and otherwise the result of the first
+    argument is returned. *)
+
 (** Takes a function that is going to be run before the chosen order and the
     order. For example, if the first argument returns Eq, then the order is
     determined by the second argument, and otherwise the result of the first

@@ -1,4 +1,3 @@
-
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 (** {1 A priority queue of streams} *)
@@ -48,15 +47,15 @@ module type S = sig
       Guarded recursion: can't loop forever
       @raise Not_found in the guard is reached *)
 
-  val take_fair_anyway: t -> Stm.C.t option list
+  val take_fair_anyway : t -> Stm.C.t option list
   (** Takes clauses from the queue in a fair manner.
       Unguarded recursion, may loop forever *)
 
-  val take_stm_nb: t -> Stm.C.t option list
+  val take_stm_nb : t -> Stm.C.t option list
   (** Attempts to take as many clauses from the queue as there are streams in
       the queue. Calls take_first to do so and stops if its guard is reached *)
 
-  val take_stm_nb_fix_stm: t -> Stm.C.t option list
+  val take_stm_nb_fix_stm : t -> Stm.C.t option list
   (** Attempts to take as many clauses from the queue as there are streams in
       the queue. Extract as many clauses as possible from first stream before
       moving to a new stream to find more clauses if necessary *)
@@ -81,4 +80,3 @@ module type S = sig
   val pp : t CCFormat.printer
   val to_string : t -> string
 end
-
