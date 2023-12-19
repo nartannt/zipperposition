@@ -71,20 +71,17 @@ let remove_duplicates iter ~eq = Iter.map List.hd (Iter.group_by ~eq iter)
 
 (* TODO add this to Type.ml (with better name) *)
 let rec my_ty_eq ty ty' =
-    let res =
-        match (Ty.view ty, Ty.view ty') with
-            | Fun (l, ty), Fun (l', ty') -> List.for_all2 my_ty_eq l l' && my_ty_eq ty ty'
-            | Forall ty, Forall ty' -> my_ty_eq ty ty'
-            | Var var, Var var' when Ty.is_tType (HVar.ty var) && Ty.is_tType (HVar.ty var') ->
-                HVar.equal (fun _ _ -> true) var var'
-            | Builtin b, Builtin b' -> b = b'
-            | DB i, DB i' -> i = i'
-            (* TODO check with someone that knows the code if using the name is fine
-             * my suspicion is that it isn't, in that case attempt to find alternative solution*)
-            | App (f, l), App (f', l') -> ID.name f = ID.name f' && List.for_all2 my_ty_eq l l'
-            | _ -> false
-    in
-        res
+    match (Ty.view ty, Ty.view ty') with
+        | Fun (l, ty), Fun (l', ty') -> List.for_all2 my_ty_eq l l' && my_ty_eq ty ty'
+        | Forall ty, Forall ty' -> my_ty_eq ty ty'
+        | Var var, Var var' when Ty.is_tType (HVar.ty var) && Ty.is_tType (HVar.ty var') ->
+            HVar.equal (fun _ _ -> true) var var'
+        | Builtin b, Builtin b' -> b = b'
+        | DB i, DB i' -> i = i'
+        (* TODO check with someone that knows the code if using the name is fine
+         * my suspicion is that it isn't, in that case attempt to find alternative solution*)
+        | App (f, l), App (f', l') -> ID.name f = ID.name f' && List.for_all2 my_ty_eq l l'
+        | _ -> false
 
 (* Iter.union needs to be provided an equality function when dealing with lists of types *)
 (* note that Ty.equal is a physical equality*)
@@ -94,12 +91,16 @@ let lit_is_monomorphic = function
     | Literal.Equation (lt, rt, _) -> T.monomorphic lt && T.monomorphic rt
     | _ -> true
 
+
+(* TODO rewrite the typed symbols extraction completely*)
 (* the given type does not contain any tType *)
 let is_not_meta ty = not (Type.Seq.sub ty |> Iter.exists Type.is_tType)
 
 (* the given type is not meta and requires no type arguments*)
 (*relation with ground?*)
 let is_instantiated ty = List.for_all is_not_meta (Ty.expected_args ty) && Ty.expected_ty_vars ty = 0
+(*let is_instantiated ty = Ty.is_ground ty*)
+
 let count = ref 0
 
 (* returns the substitution that allows matching a monomorphic type against a type *)
