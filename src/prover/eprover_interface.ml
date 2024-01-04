@@ -15,7 +15,7 @@ module type S = sig
   (** {5 Registration} *)
 
   val set_e_bin : string -> unit
-  val try_e : Env.C.t Iter.t -> Env.C.t Iter.t -> Env.C.t option
+  val try_e : Env.C.t Iter.t -> Env.C.t Iter.t -> Proof.proof option
 
   val setup : unit -> unit
   (** Register rules in the environment *)
@@ -298,8 +298,7 @@ module Make (E : Env.S) : S with module Env = E = struct
         (*List.iter (fun cl -> Printf.printf "\nWe have a clause: %s" (C.to_string cl)) (poly_initial @ (Iter.to_list poly_active_set) @ (Iter.to_list poly_passive_set));*)
         (*List.iter (fun cl -> Printf.printf "\nWe have a clause: %s" (C.to_string cl)) ([] @ (Iter.to_list poly_active_set) @ (Iter.to_list poly_passive_set));*)
 
-        (* the monomorphisation is implemented quite hackily and needs a thoughtful rework*)
-        (* monomorphisation occurs here *)
+        (* this is not good, we are re-creating a clause to input back to the prover without having any idea of which predicates we are supposed to satisfy*)
         let reconstruct_clause (clause_id, new_lits) original_clause =
             let new_lits = Array.to_list new_lits in
                 if clause_id = C.id original_clause then
@@ -361,10 +360,13 @@ module Make (E : Env.S) : S with module Env = E = struct
 
                         let clauses = List.map (fun id -> List.find (fun cl -> C.id cl = id) cl_set) ids in
                         let rule = Proof.Rule.mk "eprover" in
-                        let proof = Proof.Step.inference ~rule (List.map C.proof_parent clauses) in
-                        let penalty = CCOpt.get_exn @@ Iter.max (Iter.map C.penalty (Iter.of_list clauses)) in
-                        let trail = C.trail_l clauses in
-                            Some (C.create ~penalty ~trail [] proof)
+                        let (proof_step:Proof.step) = Proof.Step.inference ~rule (List.map C.proof_parent clauses) in
+                        let ty = TypedSTerm.prop in
+                        let proof = Proof.S.mk proof_step (Proof.Result.of_form (TypedSTerm.app_builtin ~ty Builtin.false_ [])) in
+                        (* TODO check with someone that the ppenalty and trail are indeed never used*)
+                        (*let penalty = CCOpt.get_exn @@ Iter.max (Iter.map C.penalty (Iter.of_list clauses)) in*)
+                        (*let trail = C.trail_l clauses in*)
+                        (Some proof)
                     | _ ->
                         Printf.printf "\nwe got nothing\n";
                         None
@@ -398,8 +400,8 @@ let () =
         ( "--e-sort-by-weight-only",
           Arg.Bool (( := ) _sort_by_weight_only),
           " order the clauses only by the weight, not by the proof depth." );
-        ("--e-only-ho-steps", Arg.Bool (( := ) _only_ho_steps), " translate only HO proof steps to E");
         (* TODO this option seems to not be implemented, check with someone whether that is indeed the case *)
+        ("--e-only-ho-steps", Arg.Bool (( := ) _only_ho_steps), " translate only HO proof steps to E");
         ( "--e-max-derived",
           Arg.Set_int _max_derived,
           " set the limit of clauses that are derived by Zipperposition and given to E" );

@@ -702,7 +702,7 @@ let monomorphise_problem clause_list _loop_count =
     (* initialisation *)
     let all_bounds =
         {
-          loop_count = 5;
+          loop_count = 4;
           mono_clause = { relative_bound = 2.0; absolute_cap = 10000000000; relative_floor = 7 };
           poly_clause = { relative_bound = 0.1; absolute_cap = 10000000000; relative_floor = 0 };
           subst_per_ty_var = 1000000;
@@ -862,6 +862,8 @@ let monomorphise_problem clause_list _loop_count =
             in
 
             let mono_clauses = List.filter clause_is_monomorphic clause_list in
+            Printf.printf "We have %i MONOMORPHIC clauses\n" (List.length mono_clauses);
+            List.iter (fun (_, lit_arr) -> Printf.printf "clause %s\n" (Literals.to_string lit_arr)) mono_clauses;
             let clause_list = Iter.to_list new_clauses @ mono_clauses in
 
             (* resulting clause_list with updated literals *)
