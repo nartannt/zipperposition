@@ -71,21 +71,24 @@ let remove_duplicates iter ~eq = Iter.map List.hd (Iter.group_by ~eq iter)
 
 (* TODO add this to Type.ml (with better name) *)
 let rec my_ty_eq ty ty' =
-    match (Ty.view ty, Ty.view ty') with
-        | Fun (l, ty), Fun (l', ty') -> List.for_all2 my_ty_eq l l' && my_ty_eq ty ty'
-        | Forall ty, Forall ty' -> my_ty_eq ty ty'
-        | Var var, Var var' when Ty.is_tType (HVar.ty var) && Ty.is_tType (HVar.ty var') ->
-            HVar.equal (fun _ _ -> true) var var'
-        | Builtin b, Builtin b' -> b = b'
-        | DB i, DB i' -> i = i'
-        (* TODO check with someone that knows the code if using the name is fine
-         * my suspicion is that it isn't, in that case attempt to find alternative solution*)
-        | App (f, l), App (f', l') -> ID.name f = ID.name f' && List.for_all2 my_ty_eq l l'
-        | _ -> false
+    (*not very happy with this, but it is a little bit faster as checking List.length would go through the list a first time*)
+    try
+        match (Ty.view ty, Ty.view ty') with
+            | Fun (l, ty), Fun (l', ty') -> List.for_all2 my_ty_eq l l' && my_ty_eq ty ty'
+            | Forall ty, Forall ty' -> my_ty_eq ty ty'
+            | Var var, Var var' when Ty.is_tType (HVar.ty var) && Ty.is_tType (HVar.ty var') ->
+                HVar.equal (fun _ _ -> true) var var'
+            | Builtin b, Builtin b' -> b = b'
+            | DB i, DB i' -> i = i'
+            (* TODO check with someone that knows the code if using the name is fine
+             * my suspicion is that it isn't, in that case attempt to find alternative solution*)
+            | App (f, l), App (f', l') -> ID.name f = ID.name f' && List.for_all2 my_ty_eq l l'
+            | _ -> false
+    with _ -> false
 
 (* Iter.union needs to be provided an equality function when dealing with lists of types *)
 (* note that Ty.equal is a physical equality*)
-let ty_arg_eq ty_arg1 ty_arg2 = List.for_all2 my_ty_eq ty_arg1 ty_arg2
+let ty_arg_eq ty_arg1 ty_arg2 = (assert (List.length ty_arg1 = List.length ty_arg2)); List.for_all2 my_ty_eq ty_arg1 ty_arg2
 
 let lit_is_monomorphic = function
     | Literal.Equation (lt, rt, _) -> T.monomorphic lt && T.monomorphic rt
@@ -693,7 +696,7 @@ let count_clause_arg_map clause_arg_map =
 (* takes a list of (clause_id, literal array) pairs
  * takes an integer to limit the numbers of iterations
  * returns an updated list of clauses *)
-let monomorphise_problem clause_list _loop_count =
+let monomorphise_problem clause_list =
     total_time := 0.0;
 
     begin_time := Sys.time ();
@@ -703,8 +706,9 @@ let monomorphise_problem clause_list _loop_count =
     let all_bounds =
         {
           loop_count = 4;
-          mono_clause = { relative_bound = 2.0; absolute_cap = 10000000000; relative_floor = 7 };
+          mono_clause = { relative_bound = 1.0; absolute_cap = 10000000000; relative_floor = 7 };
           poly_clause = { relative_bound = 0.1; absolute_cap = 10000000000; relative_floor = 0 };
+          (* note: we lose SWV815_5 if we have a 0 relative floor for poly_clause*)
           subst_per_ty_var = 1000000;
           (* number of substitutions generated per clause per iteration *)
           monomorphising_subst = 5;
@@ -861,9 +865,12 @@ let monomorphise_problem clause_list _loop_count =
                 List.fold_left new_clauses_fold (Iter.empty, total_clause_limit) poly_clause_list
             in
 
+            let clause_eq (_, cl) (_, cl') = Array.for_all2 Literal.equal cl cl' in
+            let new_clauses = remove_duplicates ~eq:clause_eq new_clauses in
+
             let mono_clauses = List.filter clause_is_monomorphic clause_list in
             Printf.printf "We have %i MONOMORPHIC clauses\n" (List.length mono_clauses);
-            List.iter (fun (_, lit_arr) -> Printf.printf "clause %s\n" (Literals.to_string lit_arr)) mono_clauses;
+            (*List.iter (fun (_, lit_arr) -> Printf.printf "clause %s\n" (Literals.to_string lit_arr)) mono_clauses;*)
             let clause_list = Iter.to_list new_clauses @ mono_clauses in
 
             (* resulting clause_list with updated literals *)

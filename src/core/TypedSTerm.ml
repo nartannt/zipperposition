@@ -1507,7 +1507,7 @@ let rec mangle_erase ty =
     let open Ty in
     let ty_vars, args, ret = unfold ty in
         if ty_vars != [] then (
-          Printf.printf "You fucked up: Polymorphism detected\n";
+          Printf.printf "Polymorphism detected\n";
           assert false);
         if args = [] then mangle_except_builtin ret
         else STerm.app (mangle_erase ret) (List.map mangle_erase args)
