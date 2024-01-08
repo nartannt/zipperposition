@@ -125,6 +125,7 @@ module Make (E : Env.S) : S with module Env = E = struct
 
   let output_cl ~out clause =
       let lits_converted = Literals.Conv.to_tst (C.lits clause) in
+      (*Printf.printf "converted literals: %s\n" (TypedSTerm.to_string lits_converted);*)
           (*Format.fprintf out "%% %d:\n" (C.proof_depth clause);*)
           (*let orig_cl_str = CCFormat.sprintf "%% @[%a@]@." C.pp_tstp clause in*)
           (*let commented = CCString.replace ~which:`All ~sub:"\n" ~by:"\n% " orig_cl_str in*)
@@ -237,18 +238,24 @@ module Make (E : Env.S) : S with module Env = E = struct
               Iter.map (fun c -> CCOpt.get_or ~default:c (C.eta_reduce c)) iter |> Iter.flat_map_l converter
           in
 
+          (*Iter.iter (fun cl -> Printf.printf "\nBefore conversion: %s" (C.to_string cl)) iter;*)
+
           let encoded, encoded_symbols =
               Iter.fold
                 (fun (acc, encoded_symbols) cl ->
                   try
+                    (* TODO removing this is a test, might break some things in unforseen ways*)
                     let encoded_symbols, cl' = encode_ty_args_cl ~encoded_symbols cl in
                         (cl' :: acc, encoded_symbols)
+                    (*cl::acc, encoded_symbols*)
                   with CantEncode reason ->
                     Util.debugf 5 "cannot encode(%s):@.@[%a@]@." (fun k -> k reason C.pp cl);
                     (acc, encoded_symbols))
                 ([], encoded_symbols) converted
           in
-              (encoded_symbols, encoded)
+              let res = (encoded_symbols, encoded) in
+              (*List.iter (fun cl -> Printf.printf "\nAfter  conversion: %s" (C.to_string cl)) encoded;*)
+              res
       in
 
       let take_initial ~converter () =
@@ -264,6 +271,8 @@ module Make (E : Env.S) : S with module Env = E = struct
            * and therefore it doesn't matter that they = 0, the subsequent sorting and taking !max_derived makes
            * removing those with depth 5 or greater somewhat redundant because we already eliminate clauses with high
            * proof depth that we don't want, need to double check that this doesn't cause any issues*)
+          (* in fact sorting by proof depth may not make any sense considering that the newly generated clauses are
+           * not derived through means in which the notion of proof depth is relevant (as far as i understand) *)
           clauses
           |> Iter.sort ~cmp:(fun c1 c2 ->
                  let pd1 = C.proof_depth c1 and pd2 = C.proof_depth c2 in
@@ -306,7 +315,7 @@ module Make (E : Env.S) : S with module Env = E = struct
                 let clause_trail = C.trail original_clause in
                 let clause_penalty = C.penalty original_clause in
                     let res = C.create ~penalty:clause_penalty ~trail:clause_trail new_lits proof_step in
-                    Printf.printf "\n%s\n" (C.to_string res);
+                    (*Printf.printf "\n%s\n" (C.to_string res);*)
                     Some res
                 else None
         in
@@ -316,6 +325,7 @@ module Make (E : Env.S) : S with module Env = E = struct
               (Iter.union ~eq:C.equal (Iter.of_list poly_initial)
                  (Iter.union ~eq:C.equal poly_active_set poly_passive_set))
         in
+        (*List.iter (fun cl -> Printf.printf "\noriginal clause: %s" (C.to_string cl)) clause_list;*)
         let simple_clause_list = List.map (fun cl -> (C.id cl, C.lits cl)) clause_list in
         let monomorphised_clauses = Monomorphisation.monomorphise_problem simple_clause_list in
 

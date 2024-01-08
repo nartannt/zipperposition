@@ -1510,7 +1510,7 @@ let rec mangle_erase ty =
           Printf.printf "Polymorphism detected\n";
           assert false);
         if args = [] then mangle_except_builtin ret
-        else STerm.app (mangle_erase ret) (List.map mangle_erase args)
+        else STerm.app_builtin Builtin.arrow ((mangle_erase ret)::(List.map mangle_erase args))
 
 (* TODO make mangle not an optional argument*)
 (* TODO make tests for mangle_erase *)

@@ -220,7 +220,7 @@ module Conv = struct
           in
           let disjuncts =
               match or_args with
-                (* TODO the line just under used to be assert false, check with someone that knows what they're doing
+                (* TODO the line below used to be assert false, check with someone that knows what they're doing
                  * that the replacement does indeed make sense, i believe it is correct (an empty disjunction is false) *)
                   | [] -> TypedSTerm.app_builtin ~ty Builtin.false_ []
                   | [ disj ] -> disj

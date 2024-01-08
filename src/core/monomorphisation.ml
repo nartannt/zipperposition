@@ -761,6 +761,9 @@ let monomorphise_problem clause_list =
 
         let poly_clause_list = List.filter (fun cl -> clause_is_monomorphic cl |> not) clause_list in
 
+        if List.length poly_clause_list = 0 then
+            Printf.printf "Warning: All polymorphic functions in this problem's clauses are instantiated,\
+            monomorphisation will only consist in syntactically mangling the arguments that are types\n";
         Printf.printf "We begin with %i polymorphic clauses\n" (List.length poly_clause_list);
 
         (* monomorphisation loop *)
