@@ -54,27 +54,6 @@ let iter_split filter iter =
         else (acc_1, Iter.cons elem acc_2))
       (Iter.empty, Iter.empty) iter
 
-(* it wouldn't be nice if this was a part of the iter library *)
-let iter_split_limit filter true_limit false_limit iter =
-    let fold_fun (acc_1, acc_2, continue) elem =
-        if not continue then (acc_1, acc_2, false)
-        else if filter elem then
-          if Iter.length acc_1 < true_limit then
-            (Iter.cons elem acc_1, acc_2, true)
-          else (acc_1, acc_2, Iter.length acc_2 < false_limit)
-        else if Iter.length acc_2 < false_limit then
-          (acc_1, Iter.cons elem acc_2, true)
-        else (acc_1, acc_2, Iter.length acc_1 < true_limit)
-    in
-    let true_res, false_res, _ =
-        Iter.fold
-          (fun (acc_1, acc_2, continue) elem ->
-            fold_fun (acc_1, acc_2, continue) elem)
-          (Iter.empty, Iter.empty, true)
-          iter
-    in
-        (true_res, false_res)
-
 (* TODO find if there is something more efficient *)
 let remove_duplicates iter ~eq = Iter.map List.hd (Iter.group_by ~eq iter)
 

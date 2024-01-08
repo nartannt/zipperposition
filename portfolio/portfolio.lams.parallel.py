@@ -4,7 +4,7 @@ import sys
 import re
 from multiprocessing import cpu_count
 
-STATUS_REGEX = re.compile(r'\% SZS status (\w+)')
+STATUS_REGEX = re.compile(r'SZS status (\w+)')
 
 def print_locked(msg, stdout_lock):
   assert stdout_lock is not None
