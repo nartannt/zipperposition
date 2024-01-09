@@ -59,11 +59,11 @@ let remove_duplicates iter ~eq = Iter.map List.hd (Iter.group_by ~eq iter)
 
 (* TODO add this to Type.ml (with better name) *)
 let rec my_ty_eq ty ty' =
-    (*not very happy with this, but it is a little bit faster as checking List.length would go through the list a first time*)
-    try
       match (Ty.view ty, Ty.view ty') with
           | Fun (l, ty), Fun (l', ty') ->
-              List.for_all2 my_ty_eq l l' && my_ty_eq ty ty'
+              if List.length l = List.length l' then
+                List.for_all2 my_ty_eq l l' && my_ty_eq ty ty'
+              else false
           | Forall ty, Forall ty' -> my_ty_eq ty ty'
           | Var var, Var var'
             when Ty.is_tType (HVar.ty var) && Ty.is_tType (HVar.ty var') ->
@@ -73,9 +73,10 @@ let rec my_ty_eq ty ty' =
           (* TODO check with someone that knows the code if using the name is fine
            * my suspicion is that it isn't, in that case attempt to find alternative solution*)
           | App (f, l), App (f', l') ->
-              ID.name f = ID.name f' && List.for_all2 my_ty_eq l l'
+              if List.length l = List.length l' then
+               ID.name f = ID.name f' && List.for_all2 my_ty_eq l l'
+              else false
           | _ -> false
-    with _ -> false
 
 (* Iter.union needs to be provided an equality function when dealing with lists of types *)
 (* note that Ty.equal is a physical equality*)
@@ -195,6 +196,7 @@ let split_iter type_args_iter =
     in
         (mono_type_args, poly_type_args)
 
+let merge = ref false
 (* takes a map of function symbols to monomorphic type arguments
  * takes a map of function symbols to polymorphic type arguments
  * returns an iter of the type substitutions that can be derived from the given maps *)
@@ -202,10 +204,12 @@ let derive_type_arg_subst mono_map poly_map =
     (*derives the substitutions from two sets (iters) of type arguments*)
     let type_arg_iter_subst mono_type_args_iter poly_type_args_iter =
         let poly_arg_map mono_type_args_iter poly_type_list =
-            (*(Iter.flat_map (type_arg_list_subst poly_type_list) mono_type_args_iter)*)
-            Iter.filter_map
-              (type_arg_list_subst_merge poly_type_list)
-              mono_type_args_iter
+           if not !merge then
+               (Iter.flat_map (type_arg_list_subst poly_type_list) mono_type_args_iter)
+            else 
+               Iter.filter_map
+                 (type_arg_list_subst_merge poly_type_list)
+                 mono_type_args_iter
         in
             Iter.flat_map (poly_arg_map mono_type_args_iter) poly_type_args_iter
     in
@@ -672,7 +676,7 @@ let add_typed_sym mono_map poly_map term =
     (*using tuples because this function will be used in a fold*)
     let update_maps (curr_mono_map, curr_poly_map) (ty_sym, ty_args) =
         (* this removes function symbols with no type arguments (ex: nat, bool, ...) *)
-        if List.length ty_args = 0 then (curr_mono_map, curr_poly_map)
+        if false then (curr_mono_map, curr_poly_map)
         else
           let ty_args_mono = type_args_are_mono ty_args in
           let new_mono_map =
@@ -886,7 +890,6 @@ let monomorphise_problem clause_list =
               absolute_cap = 10000000000;
               relative_floor = 0;
             };
-          (* note: we lose SWV815_5 if we have a 0 relative floor for poly_clause*)
           subst_per_ty_var = 1000000;
           (* number of substitutions generated per clause per iteration *)
           monomorphising_subst = 5;
@@ -1096,7 +1099,8 @@ let monomorphise_problem clause_list =
             in
 
             let clause_eq (_, cl) (_, cl') =
-                Array.for_all2 Literal.equal cl cl'
+               if Array.length cl = Array.length cl' then Array.for_all2 Literal.equal cl cl'
+               else false
             in
             let new_clauses = remove_duplicates ~eq:clause_eq new_clauses in
 
