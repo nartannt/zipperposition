@@ -244,18 +244,14 @@ module Make (E : Env.S) : S with module Env = E = struct
               Iter.fold
                 (fun (acc, encoded_symbols) cl ->
                   try
-                    (* TODO removing this is a test, might break some things in unforseen ways*)
                     let encoded_symbols, cl' = encode_ty_args_cl ~encoded_symbols cl in
                         (cl' :: acc, encoded_symbols)
-                    (*cl::acc, encoded_symbols*)
                   with CantEncode reason ->
                     Util.debugf 5 "cannot encode(%s):@.@[%a@]@." (fun k -> k reason C.pp cl);
                     (acc, encoded_symbols))
                 ([], encoded_symbols) converted
           in
-              let res = (encoded_symbols, encoded) in
-              (*List.iter (fun cl -> Printf.printf "\nAfter  conversion: %s" (C.to_string cl)) encoded;*)
-              res
+              (encoded_symbols, encoded)
       in
 
       let take_initial ~converter () =
@@ -304,7 +300,6 @@ module Make (E : Env.S) : S with module Env = E = struct
         (*List.iter (fun cl -> Printf.printf "\nWe have a clause: %s" (C.to_string cl)) (poly_initial @ (Iter.to_list poly_active_set) @ (Iter.to_list poly_passive_set));*)
         (*List.iter (fun cl -> Printf.printf "\nWe have a clause: %s" (C.to_string cl)) ([] @ (Iter.to_list poly_active_set) @ (Iter.to_list poly_passive_set));*)
 
-        (* this is not good, we are re-creating a clause to input back to the prover without having any idea of which predicates we are supposed to satisfy*)
         let reconstruct_clause (clause_id, new_lits) original_clause =
             if clause_id = C.id original_clause then
                 (* TODO check that this is indeed a simplification*)

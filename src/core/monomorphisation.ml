@@ -583,6 +583,22 @@ let mono_step_clause mono_type_args_map poly_type_args_map susbt_clause_map
       new_poly_map_all,
       update_susbt_map used_substs_iter susbt_clause_map curr_iteration )
 
+
+(* TODO the two functions below ar *)
+let rec ty_arg_cmp ty_arg_1 ty_arg_2 =
+   if ty_arg_1 = [] && ty_arg_2 = [] then 0
+   else match (ty_arg_1, ty_arg_2) with
+       | [], _ -> -1
+       | _, [] -> 1
+       | ty_1 :: tl_1, ty_2 :: tl_2 ->
+             let hd_cmp =  Ty.compare ty_1 ty_2 in
+             if hd_cmp = 0 then ty_arg_cmp tl_1 tl_2
+             else hd_cmp
+
+
+let sort_map_iter map =
+   ArgMap.map (fun iter -> Iter.sort_uniq ~cmp:ty_arg_cmp iter) map
+
 (* takes a map from function symbols to sets (iter for now) of monomorphic type arguments
  * takes a map from clause_ids to a map from function symbols to sets (iter for now) of polymorphic type arguments
  * takes a list of clauses under the form of a (clause_id * literal array) (clause_ids are ints)
@@ -605,7 +621,8 @@ let mono_step clause_list mono_map poly_clause_map subst_map curr_iter bounds =
               literals bounds
         in
 
-        let new_mono_map = new_mono_map_all in
+        (* TODO for investigation of the --progress question *)
+        let new_mono_map = sort_map_iter new_mono_map_all in
 
         (*if !count mod 100 = 0 then*)
         (*Printf.printf "we have a count of %i\n" !count;*)
@@ -880,22 +897,22 @@ let monomorphise_problem clause_list =
           loop_count = 4;
           mono_clause =
             {
-              relative_bound = 1.0;
-              absolute_cap = 10000000000;
+              relative_bound = 1.5;
+              absolute_cap = 10000;
               relative_floor = 7;
             };
           poly_clause =
             {
-              relative_bound = 0.1;
-              absolute_cap = 10000000000;
-              relative_floor = 0;
+              relative_bound = 0.0;
+              absolute_cap = 5000;
+              relative_floor = 1;
             };
           subst_per_ty_var = 1000000;
           (* number of substitutions generated per clause per iteration *)
           monomorphising_subst = 5;
           new_clauses_relative_bound = 2.0;
           (* maximum number of type variable per type in the polymorphic type arguments*)
-          ty_var_limit = 3;
+          ty_var_limit = 10;
         }
     in
 
@@ -1086,7 +1103,7 @@ let monomorphise_problem clause_list =
             Printf.printf "\nfinished generating types %f\n"
               (Sys.time () -. !begin_time);
             let total_clause_limit =
-                max 2000
+                max 0
                   (int_of_float
                      (all_bounds.new_clauses_relative_bound
                      *. float_of_int (List.length clause_list)))
