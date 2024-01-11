@@ -20,13 +20,13 @@ type attrs = UntypedAST.attrs
 
 (** Classification of proof steps *)
 type kind =
-    | Intro of source * role
-    | Inference of rule * tag list
-    | Simplification of rule * tag list
-    | Esa of rule
-    | Trivial  (** trivial, or trivial within theories *)
-    | Define of ID.t * source  (** definition *)
-    | By_def of ID.t  (** following from the def of ID *)
+   | Intro of source * role
+   | Inference of rule * tag list
+   | Simplification of rule * tag list
+   | Esa of rule
+   | Trivial  (** trivial, or trivial within theories *)
+   | Define of ID.t * source  (** definition *)
+   | By_def of ID.t  (** following from the def of ID *)
 
 and source = private { src_id : int; src_view : source_view }
 (** Source of leaves (from some input problem, or internal def) *)

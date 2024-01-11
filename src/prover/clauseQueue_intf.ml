@@ -1,17 +1,17 @@
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 type profile =
-    | P_default
-    | P_bfs
-    | P_almost_bfs
-    | P_explore
-    | P_ground
-    | P_goal
-    | P_conj_rel
-    | P_conj_rel_var
-    | P_ho_weight
-    | P_ho_weight_init
-    | P_avoid_expensive
+   | P_default
+   | P_bfs
+   | P_almost_bfs
+   | P_explore
+   | P_ground
+   | P_goal
+   | P_conj_rel
+   | P_conj_rel_var
+   | P_ho_weight
+   | P_ho_weight_init
+   | P_avoid_expensive
 
 (** {1 A priority queue of clauses, purely functional} *)
 module type S = sig

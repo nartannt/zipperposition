@@ -19,32 +19,31 @@ type errcode = int
 type prelude = UntypedAST.statement Iter.t
 
 type ('ret, 'before, 'after) phase =
-    | Init : (unit, _, [ `Init ]) phase (* global setup *)
-    | Setup_gc : (unit, [ `Init ], [ `Init ]) phase
-    | Setup_signal : (unit, [ `Init ], [ `Init ]) phase
-    | Parse_CLI : (filename list * Params.t, [ `Init ], [ `Parse_cli ]) phase
-    (* parse CLI options: get a list of files to process, and parameters *)
-    | LoadExtensions : (Extensions.t list, [ `Parse_cli ], [ `LoadExtensions ]) phase
-    | Parse_prelude : (prelude, [ `LoadExtensions ], [ `Parse_prelude ]) phase
-    | Start_file : (filename, [ `Parse_prelude ], [ `Start_file ]) phase (* file to process *)
-    | Parse_file : (Input_format.t * UntypedAST.statement Iter.t, [ `Start_file ], [ `Parse_file ]) phase
-      (* parse some file *)
-    | Typing : (TypeInference.typed_statement CCVector.ro_vector, [ `Parse_file ], [ `Typing ]) phase
-    | CNF : (Statement.clause_t CCVector.ro_vector, [ `Typing ], [ `CNF ]) phase
-    | Compute_prec : (Precedence.t, [ `CNF ], [ `Precedence ]) phase
-    | Compute_ord_select
-        : (Ordering.t * Selection.t * Bool_selection.t, [ `Precedence ], [ `Compute_ord_select ]) phase
-      (* compute orderign and selection function *)
-    | MakeCtx : ((module Ctx.S), [ `Compute_ord_select ], [ `MakeCtx ]) phase
-    | MakeEnv : (env_with_clauses, [ `MakeCtx ], [ `MakeEnv ]) phase
-    | Pre_saturate
-        : ('c Env.packed * Saturate.szs_status * 'c Clause.sets, [ `MakeEnv ], [ `Pre_saturate ]) phase
-    | Saturate : (env_with_result, [ `Pre_saturate ], [ `Saturate ]) phase
-    | Print_result : (unit, [ `Saturate ], [ `Print_result ]) phase
-    | Print_dot : (unit, [ `Print_result ], [ `Print_dot ]) phase
-    | Check_proof : (errcode, [ `Print_dot ], [ `Check_proof ]) phase
-    | Print_stats : (unit, [ `Check_proof ], [ `Print_stats ]) phase
-    | Exit : (unit, _, [ `Exit ]) phase
+   | Init : (unit, _, [ `Init ]) phase (* global setup *)
+   | Setup_gc : (unit, [ `Init ], [ `Init ]) phase
+   | Setup_signal : (unit, [ `Init ], [ `Init ]) phase
+   | Parse_CLI : (filename list * Params.t, [ `Init ], [ `Parse_cli ]) phase
+   (* parse CLI options: get a list of files to process, and parameters *)
+   | LoadExtensions : (Extensions.t list, [ `Parse_cli ], [ `LoadExtensions ]) phase
+   | Parse_prelude : (prelude, [ `LoadExtensions ], [ `Parse_prelude ]) phase
+   | Start_file : (filename, [ `Parse_prelude ], [ `Start_file ]) phase (* file to process *)
+   | Parse_file : (Input_format.t * UntypedAST.statement Iter.t, [ `Start_file ], [ `Parse_file ]) phase
+     (* parse some file *)
+   | Typing : (TypeInference.typed_statement CCVector.ro_vector, [ `Parse_file ], [ `Typing ]) phase
+   | CNF : (Statement.clause_t CCVector.ro_vector, [ `Typing ], [ `CNF ]) phase
+   | Compute_prec : (Precedence.t, [ `CNF ], [ `Precedence ]) phase
+   | Compute_ord_select
+       : (Ordering.t * Selection.t * Bool_selection.t, [ `Precedence ], [ `Compute_ord_select ]) phase
+     (* compute orderign and selection function *)
+   | MakeCtx : ((module Ctx.S), [ `Compute_ord_select ], [ `MakeCtx ]) phase
+   | MakeEnv : (env_with_clauses, [ `MakeCtx ], [ `MakeEnv ]) phase
+   | Pre_saturate : ('c Env.packed * Saturate.szs_status * 'c Clause.sets, [ `MakeEnv ], [ `Pre_saturate ]) phase
+   | Saturate : (env_with_result, [ `Pre_saturate ], [ `Saturate ]) phase
+   | Print_result : (unit, [ `Saturate ], [ `Print_result ]) phase
+   | Print_dot : (unit, [ `Print_result ], [ `Print_dot ]) phase
+   | Check_proof : (errcode, [ `Print_dot ], [ `Check_proof ]) phase
+   | Print_stats : (unit, [ `Check_proof ], [ `Print_stats ]) phase
+   | Exit : (unit, _, [ `Exit ]) phase
 
 type any_phase = Any_phase : (_, _, _) phase -> any_phase  (** A phase hidden in an existential type *)
 

@@ -54,22 +54,22 @@ type polarity = [ `Pos | `Neg | `Both ]
 val pp_polarity : polarity CCFormat.printer
 
 type form_definition = private {
-    form : form;
-    proxy_id : ID.t; (* name *)
-    (* the defined object *)
-    proxy : term;
-    (* atom/term standing for the defined object *)
-    proxy_ty : type_;
-    (* type of [proxy_id] *)
-    rw_rules : bool;
-    (* do we add rewrite rules (instead of an axiom)?
-       [proxy -> true if form]
-       [proxy -> false if not form] (depending on polarity) *)
-    polarity : polarity;
-    proof : Proof.step;
-    (* source for this definition *)
-    as_stmt : Statement.input_t list lazy_t;
-  }
+   form : form;
+   proxy_id : ID.t; (* name *)
+   (* the defined object *)
+   proxy : term;
+   (* atom/term standing for the defined object *)
+   proxy_ty : type_;
+   (* type of [proxy_id] *)
+   rw_rules : bool;
+   (* do we add rewrite rules (instead of an axiom)?
+      [proxy -> true if form]
+      [proxy -> false if not form] (depending on polarity) *)
+   polarity : polarity;
+   proof : Proof.step;
+   (* source for this definition *)
+   as_stmt : Statement.input_t list lazy_t;
+ }
 
 val pp_form_definition : form_definition CCFormat.printer
 
@@ -87,13 +87,13 @@ val define_form :
     @return the atomic formula that stands for [f]. *)
 
 type term_definition = private {
-    td_id : ID.t;
-    td_ty : type_;
-    td_rules : (form, term, type_) Statement.def_rule list;
-    td_as_def : (form, term, type_) Statement.def;
-    td_proof : Proof.step;
-    td_stmt : Statement.input_t list lazy_t;
-  }
+   td_id : ID.t;
+   td_ty : type_;
+   td_rules : (form, term, type_) Statement.def_rule list;
+   td_as_def : (form, term, type_) Statement.def;
+   td_proof : Proof.step;
+   td_stmt : Statement.input_t list lazy_t;
+ }
 
 val define_term :
   ?pattern:string -> ctx:ctx -> parents:Proof.Parent.t list -> (term list * term) list -> term_definition

@@ -33,8 +33,8 @@ module Make (C : Clause.S) : S with module C = C and module Ctx = C.Ctx = struct
     type rhs = T.t
 
     let compare (t11, t12, s1, c1) (t21, t22, s2, c2) =
-        let open CCOrd.Infix in
-        T.compare t11 t21 <?> (T.compare, t12, t22) <?> (compare, s1, s2) <?> (C.compare, c1, c2)
+       let open CCOrd.Infix in
+       T.compare t11 t21 <?> (T.compare, t12, t22) <?> (compare, s1, s2) <?> (C.compare, c1, c2)
 
     let extract (t1, t2, sign, _) = (t1, t2, sign)
     let priority (_, _, _, c) = if C.is_oriented_rule c then 2 else 1
@@ -83,18 +83,18 @@ module Make (C : Clause.S) : S with module C = C and module Ctx = C.Ctx = struct
     let num_clauses () = C.ClauseSet.cardinal !clauses_
 
     let add seq =
-        seq (fun c ->
-            if not (C.ClauseSet.mem c !clauses_) then (
-              clauses_ := C.ClauseSet.add c !clauses_;
-              Signal.send on_add_clause c));
-        ()
+       seq (fun c ->
+           if not (C.ClauseSet.mem c !clauses_) then (
+             clauses_ := C.ClauseSet.add c !clauses_;
+             Signal.send on_add_clause c));
+       ()
 
     let remove seq =
-        seq (fun c ->
-            if C.ClauseSet.mem c !clauses_ then (
-              clauses_ := C.ClauseSet.remove c !clauses_;
-              Signal.send on_remove_clause c));
-        ()
+       seq (fun c ->
+           if C.ClauseSet.mem c !clauses_ then (
+             clauses_ := C.ClauseSet.remove c !clauses_;
+             Signal.send on_remove_clause c));
+       ()
   end
 
   (** {2 Sets} *)
@@ -112,18 +112,18 @@ module Make (C : Clause.S) : S with module C = C and module Ctx = C.Ctx = struct
     include MakeClauseSet (struct end)
 
     let queue =
-        let p = ClauseQueue.get_profile () in
-            CQueue.of_profile p
+       let p = ClauseQueue.get_profile () in
+          CQueue.of_profile p
 
     let next_ () =
-        if CQueue.is_empty queue then None
-        else
-          try
-            let x = CQueue.take_first queue in
-                Signal.send on_remove_clause x;
-                clauses_ := C.ClauseSet.remove x !clauses_;
-                Some x
-          with Not_found -> None
+       if CQueue.is_empty queue then None
+       else
+         try
+           let x = CQueue.take_first queue in
+              Signal.send on_remove_clause x;
+              clauses_ := C.ClauseSet.remove x !clauses_;
+              Some x
+         with Not_found -> None
 
     let next () = ZProf.with_prof prof_next_passive next_ ()
     let remove seq = seq (fun c -> if CQueue.remove queue c then Signal.send on_remove_clause c)
@@ -139,17 +139,17 @@ module Make (C : Clause.S) : S with module C = C and module Ctx = C.Ctx = struct
   let stats () = (C.ClauseSet.cardinal (ActiveSet.clauses ()), C.ClauseSet.cardinal (PassiveSet.clauses ()), 0)
 
   let pp out state =
-      let num_active, num_passive, num_simpl = stats state in
-          Format.fprintf out "state {%d active clauses; %d passive clauses; %d simplification_rules; %a}"
-            num_active num_passive num_simpl CQueue.pp PassiveSet.queue
+     let num_active, num_passive, num_simpl = stats state in
+        Format.fprintf out "state {%d active clauses; %d passive clauses; %d simplification_rules; %a}"
+          num_active num_passive num_simpl CQueue.pp PassiveSet.queue
 
   let debug out state =
-      let num_active, num_passive, num_simpl = stats state in
-          Format.fprintf out
-            "@[<v2>state {%d active clauses;@ %d passive clauses;@ %d simplification_rules;@ queues@[<hv>%a@] @,\
-             active:@[<hv>%a@]@,\
-             passive:@[<hv>%a@]@,\
-             }@]"
-            num_active num_passive num_simpl CQueue.pp PassiveSet.queue C.pp_set (ActiveSet.clauses ()) C.pp_set
-            (PassiveSet.clauses ())
+     let num_active, num_passive, num_simpl = stats state in
+        Format.fprintf out
+          "@[<v2>state {%d active clauses;@ %d passive clauses;@ %d simplification_rules;@ queues@[<hv>%a@] @,\
+           active:@[<hv>%a@]@,\
+           passive:@[<hv>%a@]@,\
+           }@]"
+          num_active num_passive num_simpl CQueue.pp PassiveSet.queue C.pp_set (ActiveSet.clauses ()) C.pp_set
+          (PassiveSet.clauses ())
 end

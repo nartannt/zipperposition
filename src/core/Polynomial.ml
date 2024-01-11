@@ -48,60 +48,60 @@ module Make (Coeff : IntegerModule) (Indet : OrderedType) = struct
   let indet x = P.singleton (Monomial.singleton x) Coeff.one
 
   let add p q =
-      P.merge_safe p q ~f:(fun _ w ->
-          match w with
-              | `Left x | `Right x -> Some x
-              | `Both (w1, w2) ->
-                  assert (Coeff.add w1 w2 <> Coeff.zero);
-                  Some (Coeff.add w1 w2))
+     P.merge_safe p q ~f:(fun _ w ->
+         match w with
+            | `Left x | `Right x -> Some x
+            | `Both (w1, w2) ->
+               assert (Coeff.add w1 w2 <> Coeff.zero);
+               Some (Coeff.add w1 w2))
 
   let mult_const c p = if c = 0 then P.empty else P.map (fun w -> Coeff.mult c w) p
   let mult_indet x p : t = P.fold (fun m w new_p -> P.add (Monomial.add m x) w new_p) p P.empty
 
   let compare_aux p1 p2 =
-      (* Comparison result for each monomial *)
-      let monom_compare : int P.t =
-          P.merge
-            (fun _ w1 w2 ->
-              match (w1, w2) with
-                  | Some _, None -> Some 1
-                  | None, Some _ -> Some (-1)
-                  | Some a1, Some a2 -> Some (Coeff.compare a1 a2)
-                  | None, None -> None)
-            p1 p2
-      in
-      (* Iterate over the monomial results and return
-         Some 1 or Some -1 if all monomials point in the same direction
-         Some 0            if there are contradicting monomials
-         None              if all monomials are equal *)
-      let result =
-          P.fold
-            (fun _ c res ->
-              match res with
-                  (* Contradicting monomials already detected *)
-                  | Some 0 -> Some 0
-                  (* Current monomial does not contradict the preliminary result *)
-                  | Some r when (r < 0 && c <= 0) || (r > 0 && c >= 0) -> Some r
-                  (* Current monomial contradicts the preliminary result *)
-                  | Some r when (r < 0 && c > 0) || (r > 0 && c < 0) -> Some 0
-                  (* All monomials were equal so far *)
-                  | None when c = 0 -> None
-                  (* First differing monomial *)
-                  | None when c <> 0 -> Some c
-                  (* Exhaustive matching *)
-                  | _ -> assert false)
-            monom_compare None
-      in
-          result
+     (* Comparison result for each monomial *)
+     let monom_compare : int P.t =
+        P.merge
+          (fun _ w1 w2 ->
+            match (w1, w2) with
+               | Some _, None -> Some 1
+               | None, Some _ -> Some (-1)
+               | Some a1, Some a2 -> Some (Coeff.compare a1 a2)
+               | None, None -> None)
+          p1 p2
+     in
+     (* Iterate over the monomial results and return
+        Some 1 or Some -1 if all monomials point in the same direction
+        Some 0            if there are contradicting monomials
+        None              if all monomials are equal *)
+     let result =
+        P.fold
+          (fun _ c res ->
+            match res with
+               (* Contradicting monomials already detected *)
+               | Some 0 -> Some 0
+               (* Current monomial does not contradict the preliminary result *)
+               | Some r when (r < 0 && c <= 0) || (r > 0 && c >= 0) -> Some r
+               (* Current monomial contradicts the preliminary result *)
+               | Some r when (r < 0 && c > 0) || (r > 0 && c < 0) -> Some 0
+               (* All monomials were equal so far *)
+               | None when c = 0 -> None
+               (* First differing monomial *)
+               | None when c <> 0 -> Some c
+               (* Exhaustive matching *)
+               | _ -> assert false)
+          monom_compare None
+     in
+        result
 
   let compare p1 p2 = match compare_aux p1 p2 with Some r -> r | None -> 0
   let equal p1 p2 = compare_aux p1 p2 = None
 
   let monomial_pp out (a : Monomial.t) : unit =
-      Format.fprintf out "(%a)" (Util.pp_list ~sep:"*" Indet.pp) (Monomial.to_list a)
+     Format.fprintf out "(%a)" (Util.pp_list ~sep:"*" Indet.pp) (Monomial.to_list a)
 
   let pp out (a : t) : unit =
-      Format.fprintf out "Poly[%a]"
-        (Util.pp_list ~sep:" + " (CCPair.pp ~pp_sep:(CCFormat.return "@ * ") monomial_pp Coeff.pp))
-        (P.bindings a)
+     Format.fprintf out "Poly[%a]"
+       (Util.pp_list ~sep:" + " (CCPair.pp ~pp_sep:(CCFormat.return "@ * ") monomial_pp Coeff.pp))
+       (P.bindings a)
 end

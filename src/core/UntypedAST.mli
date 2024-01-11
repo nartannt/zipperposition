@@ -17,12 +17,12 @@ type ty = T.t
 type form = T.t
 
 type data = {
-    data_name : string;
-    data_vars : string list;
-    data_cstors : (string * (string option * ty) list) list;
-        (* list of constructor. Each constructor is paired with a list of
-           arguments, that is, an optional projector + the type *)
-  }
+   data_name : string;
+   data_vars : string list;
+   data_cstors : (string * (string option * ty) list) list;
+       (* list of constructor. Each constructor is paired with a list of
+          arguments, that is, an optional projector + the type *)
+ }
 (** Basic definition of inductive types *)
 
 (** Attributes (general terms) *)
@@ -33,14 +33,14 @@ type def = { def_id : string; def_ty : ty; def_rules : term list }
 
 (** Statement *)
 type statement_view =
-    | Include of string
-    | Decl of string * ty
-    | Def of def list
-    | Rewrite of term
-    | Data of data list
-    | Assert of form
-    | Lemma of form
-    | Goal of form
+   | Include of string
+   | Decl of string * ty
+   | Def of def list
+   | Rewrite of term
+   | Data of data list
+   | Assert of form
+   | Lemma of form
+   | Goal of form
 
 type statement = { stmt : statement_view; attrs : attrs; loc : Loc.t option }
 

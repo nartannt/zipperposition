@@ -33,19 +33,18 @@ module Set = struct
   let find t id = try Some (find_exn t id) with Not_found -> None
 
   let diff a b =
-      ID.Map.merge_safe a b ~f:(fun _ pair ->
-          match pair with `Left x -> Some x | `Right _ -> None | `Both _ -> None)
+     ID.Map.merge_safe a b ~f:(fun _ pair ->
+         match pair with `Left x -> Some x | `Right _ -> None | `Both _ -> None)
 
   let cardinal t = ID.Map.cardinal t
 
   let intersection_empty s t =
-      try
-        let _ =
-            ID.Map.merge_safe s t ~f:(fun _ o ->
-                match o with `Left _ | `Right _ -> None | `Both _ -> raise Exit)
-        in
-            true
-      with Exit -> false
+     try
+       let _ =
+          ID.Map.merge_safe s t ~f:(fun _ o -> match o with `Left _ | `Right _ -> None | `Both _ -> raise Exit)
+       in
+          true
+     with Exit -> false
 
   let of_iter s = s |> Iter.map (fun v -> (v.id, v)) |> ID.Map.of_iter
   let add_seq m s = s |> Iter.map (fun v -> (v.id, v)) |> ID.Map.add_iter m
@@ -74,10 +73,10 @@ module Subst = struct
   let to_list t = ID.Map.fold (fun _ tup acc -> tup :: acc) t []
 
   let pp pp_v out t =
-      let pp_pair out (v, x) = Format.fprintf out "@[%a → %a@]" pp_full v pp_v x in
-          Format.fprintf out "@[%a@]" (Util.pp_iter ~sep:", " pp_pair) (to_iter t)
+     let pp_pair out (v, x) = Format.fprintf out "@[%a → %a@]" pp_full v pp_v x in
+        Format.fprintf out "@[%a@]" (Util.pp_iter ~sep:", " pp_pair) (to_iter t)
 
   let merge a b =
-      ID.Map.merge_safe a b ~f:(fun _ v ->
-          match v with `Both (_, x) -> Some x (* favor right one *) | `Left x | `Right x -> Some x)
+     ID.Map.merge_safe a b ~f:(fun _ v ->
+         match v with `Both (_, x) -> Some x (* favor right one *) | `Left x | `Right x -> Some x)
 end

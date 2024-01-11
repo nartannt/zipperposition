@@ -164,8 +164,7 @@ val constrain_term_type : ?loc:loc -> Ctx.t -> untyped -> type_ -> unit or_error
 
 type typed_statement = (typed, typed, type_) Statement.t
 
-val infer_statement_exn :
-  ?file:string -> Ctx.t -> UntypedAST.statement -> typed_statement * typed_statement list
+val infer_statement_exn : ?file:string -> Ctx.t -> UntypedAST.statement -> typed_statement * typed_statement list
 (** [infer_statement ctx ~f st] checks and convert [st] into a
     typed statements, and a list of auxiliary type declarations for symbols
     that were inferred implicitly. *)

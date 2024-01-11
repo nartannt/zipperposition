@@ -13,66 +13,66 @@
 val _t_bigger_false : bool ref
 
 type t =
-    | Not
-    | And
-    | Or
-    | Imply
-    | Equiv
-    | Xor
-    | Eq
-    | Neq
-    | HasType
-    | True
-    | False
-    | Arrow
-    | Wildcard
-    | Multiset (* type of multisets *)
-    | TType (* type of types *)
-    | Prop
-    | Term
-    | ForallConst  (** constant for simulating forall *)
-    | ExistsConst  (** constant for simulating exists *)
-    | ChoiceConst
-    | Grounding  (** used for inst-gen *)
-    | TyInt
-    | TyRat
-    | TyReal
-    | Int of Z.t
-    | Rat of Q.t
-    | Real of string (* for now… *)
-    | Floor
-    | Ceiling
-    | Truncate
-    | Round
-    | Prec
-    | Succ
-    | Sum
-    | Difference
-    | Uminus
-    | Product
-    | Quotient
-    | Quotient_e
-    | Quotient_t
-    | Quotient_f
-    | Remainder_e
-    | Remainder_t
-    | Remainder_f
-    | Is_int
-    | Is_rat
-    | To_int
-    | To_rat
-    | Less
-    | Lesseq
-    | Greater
-    | Greatereq
-    | Box_opaque  (** hint not to open this formula *)
-    | Pseudo_de_bruijn of int  (** magic to embed De Bruijn indices in normal terms *)
-    | BComb  (** BCIKS combinators *)
-    | CComb
-    | IComb
-    | KComb
-    | SComb
-    | Distinct
+   | Not
+   | And
+   | Or
+   | Imply
+   | Equiv
+   | Xor
+   | Eq
+   | Neq
+   | HasType
+   | True
+   | False
+   | Arrow
+   | Wildcard
+   | Multiset (* type of multisets *)
+   | TType (* type of types *)
+   | Prop
+   | Term
+   | ForallConst  (** constant for simulating forall *)
+   | ExistsConst  (** constant for simulating exists *)
+   | ChoiceConst
+   | Grounding  (** used for inst-gen *)
+   | TyInt
+   | TyRat
+   | TyReal
+   | Int of Z.t
+   | Rat of Q.t
+   | Real of string (* for now… *)
+   | Floor
+   | Ceiling
+   | Truncate
+   | Round
+   | Prec
+   | Succ
+   | Sum
+   | Difference
+   | Uminus
+   | Product
+   | Quotient
+   | Quotient_e
+   | Quotient_t
+   | Quotient_f
+   | Remainder_e
+   | Remainder_t
+   | Remainder_f
+   | Is_int
+   | Is_rat
+   | To_int
+   | To_rat
+   | Less
+   | Lesseq
+   | Greater
+   | Greatereq
+   | Box_opaque  (** hint not to open this formula *)
+   | Pseudo_de_bruijn of int  (** magic to embed De Bruijn indices in normal terms *)
+   | BComb  (** BCIKS combinators *)
+   | CComb
+   | IComb
+   | KComb
+   | SComb
+   | Distinct
 
 include Interfaces.HASH with type t := t
 include Interfaces.ORD with type t := t
@@ -178,18 +178,18 @@ module Tbl : Hashtbl.S with type key = t
 (** Each tag describes an extension of FO logic *)
 module Tag : sig
   type t =
-      | T_lia  (** integer arith *)
-      | T_lra  (** rational arith *)
-      | T_ho  (** higher order *)
-      | T_live_cnf  (** live_cnf *)
-      | T_ho_norm  (** higher-order normalization *)
-      | T_dont_increase_depth  (** don't increase depth  *)
-      | T_ext  (** extensionality *)
-      | T_ind  (** induction *)
-      | T_data  (** datatypes *)
-      | T_distinct  (** distinct constants *)
-      | T_ac of ID.t  (** AC symbol *)
-      | T_cannot_orphan
+     | T_lia  (** integer arith *)
+     | T_lra  (** rational arith *)
+     | T_ho  (** higher order *)
+     | T_live_cnf  (** live_cnf *)
+     | T_ho_norm  (** higher-order normalization *)
+     | T_dont_increase_depth  (** don't increase depth  *)
+     | T_ext  (** extensionality *)
+     | T_ind  (** induction *)
+     | T_data  (** datatypes *)
+     | T_distinct  (** distinct constants *)
+     | T_ac of ID.t  (** AC symbol *)
+     | T_cannot_orphan
 
   val compare : t -> t -> int
   val pp : t CCFormat.printer

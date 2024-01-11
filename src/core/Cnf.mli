@@ -51,24 +51,24 @@ val miniscope : ?distribute_exists:bool -> form -> form
 
 (** Options are used to tune the behavior of the CNF conversion. *)
 type options =
-    | LazyCnf
-        (** if enabled, inital formulas will not be converted to the
+   | LazyCnf
+       (** if enabled, inital formulas will not be converted to the
       clausal form. Instead, formulas will be presented as is,
       and lazy calculus rules will be used to clausify. *)
-    | DistributeExists
-        (** if enabled, will distribute existential quantifiers over
+   | DistributeExists
+       (** if enabled, will distribute existential quantifiers over
       disjunctions. This can make skolem symbols smaller (smaller arity) but
       introduce more of them. *)
-    | DisableRenaming
-        (** disables formula renaming. Can re-introduce the worst-case
+   | DisableRenaming
+       (** disables formula renaming. Can re-introduce the worst-case
       exponential behavior of CNF. *)
-    | InitialProcessing of (form -> form)  (** any processing, at the beginning, before CNF starts  *)
-    | PostNNF of (form -> form)
-        (** any processing that keeps negation at leaves,
+   | InitialProcessing of (form -> form)  (** any processing, at the beginning, before CNF starts  *)
+   | PostNNF of (form -> form)
+       (** any processing that keeps negation at leaves,
       just after reduction to NNF. Its output
       must not break the NNF form (negation at root only). *)
-    | PostSkolem of (form -> form)
-        (** transformation applied just after skolemization. It must not
+   | PostSkolem of (form -> form)
+       (** transformation applied just after skolemization. It must not
       break skolemization nor NNF (no quantifier, no non-leaf negation). *)
 
 type clause = lit list

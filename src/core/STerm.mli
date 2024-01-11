@@ -21,17 +21,17 @@ type t = private { term : view; loc : location option; attrs : attr list }
 and match_branch = Match_case of string * var list * t | Match_default of t
 
 and view =
-    | Var of var  (** variable *)
-    | Const of string  (** constant *)
-    | AppBuiltin of Builtin.t * t list
-    | App of t * t list  (** apply term *)
-    | Ite of t * t * t
-    | Match of t * match_branch list
-    | Let of (var * t) list * t
-    | With of (var * t) list * t
-    | Bind of Binder.t * typed_var list * t  (** bind n variables *)
-    | List of t list  (** special constructor for lists *)
-    | Record of (string * t) list * var option  (** extensible record *)
+   | Var of var  (** variable *)
+   | Const of string  (** constant *)
+   | AppBuiltin of Builtin.t * t list
+   | App of t * t list  (** apply term *)
+   | Ite of t * t * t
+   | Match of t * match_branch list
+   | Let of (var * t) list * t
+   | With of (var * t) list * t
+   | Bind of Binder.t * typed_var list * t  (** bind n variables *)
+   | List of t list  (** special constructor for lists *)
+   | Record of (string * t) list * var option  (** extensible record *)
 
 and typed_var = var * t option
 and attr = Attr_distinct_const

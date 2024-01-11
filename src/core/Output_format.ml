@@ -11,11 +11,11 @@ let none : t = O_none
 let default : t = normal
 
 let pp out (i : t) =
-    match i with
-        | O_tptp -> CCFormat.string out "tptp"
-        | O_zf -> CCFormat.string out "zf"
-        | O_none -> CCFormat.string out "none"
-        | O_normal -> CCFormat.string out "normal"
+   match i with
+      | O_tptp -> CCFormat.string out "tptp"
+      | O_zf -> CCFormat.string out "zf"
+      | O_none -> CCFormat.string out "none"
+      | O_normal -> CCFormat.string out "normal"
 
 (** Prefix to use for line comments *)
 let comment_prefix = function O_tptp -> "% " | O_normal | O_zf -> "# " | O_none -> ""

@@ -3,19 +3,19 @@
 (** {1 Unique Identifiers} *)
 
 type t = {
-    id : int;
-    name : string;
-    mutable payload : exn list;  (** Use [exn] as an open type for user-defined payload *)
-  }
+   id : int;
+   name : string;
+   mutable payload : exn list;  (** Use [exn] as an open type for user-defined payload *)
+ }
 
 type t_ = t
 
 let make =
-    let n = ref 0 in
-        fun name ->
-            let id = !n in
-                incr n;
-                { id; name; payload = [] }
+   let n = ref 0 in
+      fun name ->
+         let id = !n in
+            incr n;
+            { id; name; payload = [] }
 
 let makef fmt = CCFormat.ksprintf ~f:make fmt
 let copy t = make t.name
@@ -25,38 +25,38 @@ let payload t = t.payload
 
 (* for temporary purposes *)
 let dummy_of_int id =
-    let name = "DUMMY_" ^ CCInt.to_string id in
-        { id; name; payload = [] }
+   let name = "DUMMY_" ^ CCInt.to_string id in
+      { id; name; payload = [] }
 
 let set_payload ?(can_erase = fun _ -> false) t e =
-    let rec aux = function
-        | [] -> [ e ]
-        | e' :: tail when can_erase e' -> e :: tail
-        | e' :: tail -> e' :: aux tail
-    in
-        t.payload <- aux t.payload
+   let rec aux = function
+      | [] -> [ e ]
+      | e' :: tail when can_erase e' -> e :: tail
+      | e' :: tail -> e' :: aux tail
+   in
+      t.payload <- aux t.payload
 
 let payload_find ~f:p t =
-    match t.payload with
-        | [] -> None
-        | e1 :: tail -> (
-            match (p e1, tail) with
-                | (Some _ as res), _ -> res
-                | None, [] -> None
-                | None, e2 :: tail2 -> (
-                    match (p e2, tail2) with
-                        | (Some _ as res), _ -> res
-                        | None, [] -> None
-                        | None, e3 :: tail3 -> (
-                            match p e3 with Some _ as res -> res | None -> CCList.find_map p tail3)))
+   match t.payload with
+      | [] -> None
+      | e1 :: tail -> (
+         match (p e1, tail) with
+            | (Some _ as res), _ -> res
+            | None, [] -> None
+            | None, e2 :: tail2 -> (
+               match (p e2, tail2) with
+                  | (Some _ as res), _ -> res
+                  | None, [] -> None
+                  | None, e3 :: tail3 -> (
+                     match p e3 with Some _ as res -> res | None -> CCList.find_map p tail3)))
 
 let payload_pred ~f:p t =
-    match t.payload with
-        | [] -> false
-        | e :: _ when p e -> true
-        | _ :: e :: _ when p e -> true
-        | _ :: _ :: e :: _ when p e -> true
-        | l -> List.exists p l
+   match t.payload with
+      | [] -> false
+      | e :: _ when p e -> true
+      | _ :: e :: _ when p e -> true
+      | _ :: _ :: e :: _ when p e -> true
+      | l -> List.exists p l
 
 let hash t = t.id
 let equal i1 i2 = i1.id = i2.id
@@ -67,20 +67,19 @@ let pp_full out id = Format.fprintf out "%s/%d" id.name id.id
 let pp_fullc = pp_full
 
 let pp_tstp out id =
-    if Util.tstp_needs_escaping id.name then CCFormat.fprintf out "'%s'" id.name
-    else CCFormat.string out id.name
+   if Util.tstp_needs_escaping id.name then CCFormat.fprintf out "'%s'" id.name else CCFormat.string out id.name
 
 let pp_zf = pp_tstp
 
 let gensym =
-    let r = ref 0 in
-    let names = "abcdefghijklmopq" in
-        fun () ->
-            let i = !r / String.length names in
-            let j = !r mod String.length names in
-            let name = if i = 0 then Printf.sprintf "%c" names.[j] else Printf.sprintf "%c%d" names.[j] i in
-                incr r;
-                make name
+   let r = ref 0 in
+   let names = "abcdefghijklmopq" in
+      fun () ->
+         let i = !r / String.length names in
+         let j = !r mod String.length names in
+         let name = if i = 0 then Printf.sprintf "%c" names.[j] else Printf.sprintf "%c%d" names.[j] i in
+            incr r;
+            make name
 
 module O_ = struct
   type t = t_

@@ -23,18 +23,18 @@ type 'a modifiers = ('a -> 'a) list
 (* a list of actions parametrized by ['a] *)
 
 type t = {
-    name : string;
-    prio : int;  (** the lower, the more urgent, the earlier it is loaded *)
-    start_file_actions : string state_actions;
-    post_parse_actions : UntypedAST.statement Iter.t state_actions;
-    post_typing_actions : TypeInference.typed_statement CCVector.ro_vector state_actions;
-    post_cnf_modifiers : Cnf.c_statement Iter.t modifiers;
-    post_cnf_actions : Statement.clause_t CCVector.ro_vector state_actions;
-    ord_select_actions : (Ordering.t * Selection.t) state_actions;
-    ctx_actions : (module Ctx_intf.S) state_actions;
-    prec_actions : prec_action list;
-    env_actions : env_action list;
-  }
+   name : string;
+   prio : int;  (** the lower, the more urgent, the earlier it is loaded *)
+   start_file_actions : string state_actions;
+   post_parse_actions : UntypedAST.statement Iter.t state_actions;
+   post_typing_actions : TypeInference.typed_statement CCVector.ro_vector state_actions;
+   post_cnf_modifiers : Cnf.c_statement Iter.t modifiers;
+   post_cnf_actions : Statement.clause_t CCVector.ro_vector state_actions;
+   ord_select_actions : (Ordering.t * Selection.t) state_actions;
+   ctx_actions : (module Ctx_intf.S) state_actions;
+   prec_actions : prec_action list;
+   env_actions : env_action list;
+ }
 (** An extension contains a number of actions that can modify the {!Flex_state.t}
     during preprocessing, or modify the {!Env_intf.S} once it is built. *)
 

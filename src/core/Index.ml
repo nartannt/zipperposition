@@ -23,16 +23,16 @@ module MakeLeaf (X : Set.OrderedType) : LEAF with type elt = X.t = struct
   let find_ leaf t = try T.Map.find t leaf with Not_found -> S.empty
 
   let add leaf t data =
-      let set = find_ leaf t in
-      let set = S.add data set in
-          T.Map.add t set leaf
+     let set = find_ leaf t in
+     let set = S.add data set in
+        T.Map.add t set leaf
 
   let remove_if leaf t set_filter =
-      try
-        let set = T.Map.find t leaf in
-        let set = set_filter set in
-            if S.is_empty set then T.Map.remove t leaf else T.Map.add t set leaf
-      with Not_found -> leaf
+     try
+       let set = T.Map.find t leaf in
+       let set = set_filter set in
+          if S.is_empty set then T.Map.remove t leaf else T.Map.add t set leaf
+     with Not_found -> leaf
 
   let remove leaf t data = remove_if leaf t (fun set -> S.remove data set)
   let update_leaf leaf t data_filter = remove_if leaf t (fun set -> S.filter data_filter set)
@@ -42,38 +42,38 @@ module MakeLeaf (X : Set.OrderedType) : LEAF with type elt = X.t = struct
   let size leaf = T.Map.fold (fun _ set acc -> S.cardinal set + acc) leaf 0
 
   let fold_unify (leaf, sc_l) t k =
-      T.Map.iter
-        (fun t' set ->
-          try
-            let subst = Unif.FO.unify_full (t', sc_l) t in
-                S.iter (fun data -> k (t', data, subst)) set
-          with Unif.Fail -> ())
-        leaf
+     T.Map.iter
+       (fun t' set ->
+         try
+           let subst = Unif.FO.unify_full (t', sc_l) t in
+              S.iter (fun data -> k (t', data, subst)) set
+         with Unif.Fail -> ())
+       leaf
 
   let fold_unify_complete ~unif_alg (leaf, sc_l) t k =
-      T.Map.iter
-        (fun t' set ->
-          let substs = unif_alg (t', sc_l) t in
-              S.iter (fun data -> k (t', data, substs)) set)
-        leaf
+     T.Map.iter
+       (fun t' set ->
+         let substs = unif_alg (t', sc_l) t in
+            S.iter (fun data -> k (t', data, substs)) set)
+       leaf
 
   let fold_match ?(subst = Subst.empty) (leaf, sc_l) t k =
-      T.Map.iter
-        (fun t' set ->
-          try
-            let subst = Unif.FO.matching ~subst ~pattern:(t', sc_l) t in
-                S.iter (fun data -> k (t', data, subst)) set
-          with Unif.Fail -> ())
-        leaf
+     T.Map.iter
+       (fun t' set ->
+         try
+           let subst = Unif.FO.matching ~subst ~pattern:(t', sc_l) t in
+              S.iter (fun data -> k (t', data, subst)) set
+         with Unif.Fail -> ())
+       leaf
 
   let fold_matched ?(subst = Subst.empty) (leaf, sc_l) t k =
-      T.Map.iter
-        (fun t' set ->
-          try
-            let subst = Unif.FO.matching ~subst ~pattern:t (t', sc_l) in
-                S.iter (fun data -> k (t', data, subst)) set
-          with Unif.Fail -> ())
-        leaf
+     T.Map.iter
+       (fun t' set ->
+         try
+           let subst = Unif.FO.matching ~subst ~pattern:t (t', sc_l) in
+              S.iter (fun data -> k (t', data, subst)) set
+         with Unif.Fail -> ())
+       leaf
 end
 
 (** {2 Term index} *)
@@ -98,8 +98,8 @@ module BasicEquation = struct
   type rhs = T.t
 
   let compare (l1, r1) (l2, r2) =
-      let c = T.compare l1 l2 in
-          if c <> 0 then c else T.compare r1 r2
+     let c = T.compare l1 l2 in
+        if c <> 0 then c else T.compare r1 r2
 
   let extract (l, r) = (l, r, true)
   let priority _ = 1

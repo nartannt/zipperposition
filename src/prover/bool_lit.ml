@@ -22,18 +22,18 @@ module Make (Payload : PAYLOAD) : S with type payload = Payload.t = struct
   let rec dummy = { id = 0; neg = dummy; payload = Payload.dummy }
 
   let fresh_id =
-      let n = ref 1 in
-          fun () ->
-              Util.incr_stat stat_num_lit;
-              let id = !n in
-                  incr n;
-                  id
+     let n = ref 1 in
+        fun () ->
+           Util.incr_stat stat_num_lit;
+           let id = !n in
+              incr n;
+              id
 
   (* factory for literals *)
   let make payload =
-      let id = fresh_id () in
-      let rec pos = { id; payload; neg } and neg = { id = -id; payload; neg = pos } in
-          pos
+     let id = fresh_id () in
+     let rec pos = { id; payload; neg } and neg = { id = -id; payload; neg = pos } in
+        pos
 
   let hash i = Hash.int i.id
   let equal i j = i.id = j.id

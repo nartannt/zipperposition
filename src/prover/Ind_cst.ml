@@ -10,23 +10,23 @@ exception InvalidDecl of string
 exception NotAnInductiveConstant of ID.t
 
 let () =
-    let spf = CCFormat.sprintf in
-        Printexc.register_printer (function
-            | InvalidDecl msg -> Some (spf "@[<2>invalid declaration:@ %s@]" msg)
-            | NotAnInductiveConstant id -> Some (spf "%a is not an inductive constant" ID.pp id)
-            | _ -> None)
+   let spf = CCFormat.sprintf in
+      Printexc.register_printer (function
+         | InvalidDecl msg -> Some (spf "@[<2>invalid declaration:@ %s@]" msg)
+         | NotAnInductiveConstant id -> Some (spf "%a is not an inductive constant" ID.pp id)
+         | _ -> None)
 
 let invalid_decl m = raise (InvalidDecl m)
 let invalid_declf m = CCFormat.ksprintf m ~f:invalid_decl
 
 type t = {
-    cst_id : ID.t;
-    cst_args : Type.t list;
-    cst_ty : Type.t; (* [cst_ty = cst_id cst_args] *)
-    cst_ity : Ind_ty.t; (* the corresponding inductive type *)
-    cst_is_sub : bool; (* sub-constant? *)
-    cst_depth : int; (* how many induction lead to this one? *)
-  }
+   cst_id : ID.t;
+   cst_args : Type.t list;
+   cst_ty : Type.t; (* [cst_ty = cst_id cst_args] *)
+   cst_ity : Ind_ty.t; (* the corresponding inductive type *)
+   cst_is_sub : bool; (* sub-constant? *)
+   cst_depth : int; (* how many induction lead to this one? *)
+ }
 
 exception Payload_cst of t
 
@@ -61,40 +61,40 @@ let id_is_sub id = id_as_cst id |> CCOpt.map_or ~default:false is_sub
 let n_ = ref 0
 
 let make_skolem ty : ID.t =
-    let c = ID.makef "#%s_%d" (Type.mangle ty) !n_ in
-        incr n_;
-        (* declare as a skolem *)
-        let k = if Ind_ty.is_inductive_type ty then ID.K_ind else ID.K_normal in
-            ID.set_payload c (ID.Attr_skolem k);
-            c
+   let c = ID.makef "#%s_%d" (Type.mangle ty) !n_ in
+      incr n_;
+      (* declare as a skolem *)
+      let k = if Ind_ty.is_inductive_type ty then ID.K_ind else ID.K_normal in
+         ID.set_payload c (ID.Attr_skolem k);
+         c
 
 (* declare new constant *)
 let declare ~depth ~is_sub id ty =
-    Util.debugf ~section:Ind_ty.section 2
-      "@[<2>declare new inductive symbol@ `@[%a : %a@]`@ :depth %d :is_sub %B@]" (fun k ->
-        k ID.pp id Type.pp ty depth is_sub);
-    assert (not (id_is_cst id));
-    assert (Type.is_ground ty);
-    (* constant --> not polymorphic *)
-    let ity, args =
-        match Ind_ty.as_inductive_type ty with
-            | Some (t, l) -> (t, l)
-            | None -> invalid_declf "cannot declare a constant of type %a" Type.pp ty
-    in
-    (* build coverset and constant, mutually recursive *)
-    let cst =
-        { cst_id = id; cst_ty = ty; cst_depth = depth; cst_ity = ity; cst_args = args; cst_is_sub = is_sub }
-    in
-        ID.set_payload id (Payload_cst cst) ~can_erase:(function
-            | ID.Attr_skolem ID.K_ind -> true (* special case: promotion from skolem to inductive const *)
-            | _ -> false);
-        (* return *)
-        Signal.send on_new_cst cst;
-        cst
+   Util.debugf ~section:Ind_ty.section 2
+     "@[<2>declare new inductive symbol@ `@[%a : %a@]`@ :depth %d :is_sub %B@]" (fun k ->
+       k ID.pp id Type.pp ty depth is_sub);
+   assert (not (id_is_cst id));
+   assert (Type.is_ground ty);
+   (* constant --> not polymorphic *)
+   let ity, args =
+      match Ind_ty.as_inductive_type ty with
+         | Some (t, l) -> (t, l)
+         | None -> invalid_declf "cannot declare a constant of type %a" Type.pp ty
+   in
+   (* build coverset and constant, mutually recursive *)
+   let cst =
+      { cst_id = id; cst_ty = ty; cst_depth = depth; cst_ity = ity; cst_args = args; cst_is_sub = is_sub }
+   in
+      ID.set_payload id (Payload_cst cst) ~can_erase:(function
+         | ID.Attr_skolem ID.K_ind -> true (* special case: promotion from skolem to inductive const *)
+         | _ -> false);
+      (* return *)
+      Signal.send on_new_cst cst;
+      cst
 
 let make ?(depth = 0) ~is_sub (ty : Type.t) : t =
-    let id = make_skolem ty in
-        declare ~depth ~is_sub id ty
+   let id = make_skolem ty in
+      declare ~depth ~is_sub id ty
 
 let dominates (c1 : t) (c2 : t) : bool = c1.cst_depth < c2.cst_depth
 
@@ -106,24 +106,24 @@ let ind_skolem_compare = CCOrd.pair ID.compare Type.compare
 let ind_skolem_equal a b = ind_skolem_compare a b = 0
 
 let id_is_ind_skolem (id : ID.t) (ty : Type.t) : bool =
-    let n_tyvars, ty_args, ty_ret = Type.open_poly_fun ty in
-        n_tyvars = 0 && ty_args = [] (* constant *) && Ind_ty.is_inductive_type ty_ret
-        && Ind_ty.is_recursive (Ind_ty.as_inductive_type_exn ty_ret |> fst)
-        && Type.is_ground ty
-        && (id_is_cst id || ((not (Ind_ty.is_constructor id)) && not (Rewrite.is_defined_cst id)))
+   let n_tyvars, ty_args, ty_ret = Type.open_poly_fun ty in
+      n_tyvars = 0 && ty_args = [] (* constant *) && Ind_ty.is_inductive_type ty_ret
+      && Ind_ty.is_recursive (Ind_ty.as_inductive_type_exn ty_ret |> fst)
+      && Type.is_ground ty
+      && (id_is_cst id || ((not (Ind_ty.is_constructor id)) && not (Rewrite.is_defined_cst id)))
 
 let ind_skolem_depth (id : ID.t) : int = match id_as_cst id with None -> 0 | Some c -> depth c
 
 (* find inductive constant candidates in terms *)
 let find_ind_skolems t : ind_skolem Iter.t =
-    T.Seq.subterms t
-    |> Iter.filter_map (fun t ->
-           match T.view t with
-               | T.Const id ->
-                   let ty = T.ty t in
-                       if id_is_ind_skolem id ty then (
-                         let n_tyvars, ty_args, _ = Type.open_poly_fun ty in
-                             assert (n_tyvars = 0 && ty_args = []);
-                             Some (id, ty))
-                       else None
-               | _ -> None)
+   T.Seq.subterms t
+   |> Iter.filter_map (fun t ->
+          match T.view t with
+             | T.Const id ->
+                let ty = T.ty t in
+                   if id_is_ind_skolem id ty then (
+                     let n_tyvars, ty_args, _ = Type.open_poly_fun ty in
+                        assert (n_tyvars = 0 && ty_args = []);
+                        Some (id, ty))
+                   else None
+             | _ -> None)

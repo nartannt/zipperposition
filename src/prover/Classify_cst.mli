@@ -11,15 +11,15 @@ open Logtk
 *)
 
 type res =
-    | Ty of Ind_ty.t
-    | Cstor of Ind_ty.constructor * Ind_ty.t
-    | Inductive_cst of Ind_cst.t option
-    | Projector of ID.t  (** projector of some constructor (id: type) *)
-    | DefinedCst of int * Statement.definition
-        (** (recursive) definition of given stratification level + definition *)
-    | Parameter of int
-    | Skolem
-    | Other
+   | Ty of Ind_ty.t
+   | Cstor of Ind_ty.constructor * Ind_ty.t
+   | Inductive_cst of Ind_cst.t option
+   | Projector of ID.t  (** projector of some constructor (id: type) *)
+   | DefinedCst of int * Statement.definition
+       (** (recursive) definition of given stratification level + definition *)
+   | Parameter of int
+   | Skolem
+   | Other
 
 val classify : ID.t -> res
 (** [classify id] returns the role [id] plays in inductive reasoning *)

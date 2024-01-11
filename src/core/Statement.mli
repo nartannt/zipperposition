@@ -11,15 +11,15 @@
 *)
 
 type 'ty data = {
-    data_id : ID.t;  (** Name of the type *)
-    data_args : 'ty Var.t list;  (** type parameters *)
-    data_ty : 'ty;  (** type of Id, that is,   [type -> type -> ... -> type] *)
-    data_cstors : (ID.t * 'ty * ('ty * (ID.t * 'ty)) list) list;
-        (** Each constructor is [id, ty, args].
+   data_id : ID.t;  (** Name of the type *)
+   data_args : 'ty Var.t list;  (** type parameters *)
+   data_ty : 'ty;  (** type of Id, that is,   [type -> type -> ... -> type] *)
+   data_cstors : (ID.t * 'ty * ('ty * (ID.t * 'ty)) list) list;
+       (** Each constructor is [id, ty, args].
       [ty] must be of the form [ty1 -> ty2 -> ... -> id args].
       [args] has the form [(ty1, p1), (ty2,p2), …] where each [p]
       is a projector. *)
-  }
+ }
 (** A datatype declaration *)
 
 type attr = A_AC | A_infix of string | A_prefix of string | A_sos  (** set of support *)
@@ -30,33 +30,33 @@ type polarity = [ `Equiv | `Imply ]
 (** polarity for rewrite rules *)
 
 type ('f, 't, 'ty) def_rule =
-    | Def_term of { vars : 'ty Var.t list; id : ID.t; ty : 'ty; args : 't list; rhs : 't; as_form : 'f }
-        (** [forall vars, id args = rhs] *)
-    | Def_form of {
-        vars : 'ty Var.t list;
-        lhs : 't SLiteral.t;
-        rhs : 'f list;
-        polarity : polarity;
-        as_form : 'f list;
-      }  (** [forall vars, lhs op bigand rhs] where [op] depends on
+   | Def_term of { vars : 'ty Var.t list; id : ID.t; ty : 'ty; args : 't list; rhs : 't; as_form : 'f }
+       (** [forall vars, id args = rhs] *)
+   | Def_form of {
+       vars : 'ty Var.t list;
+       lhs : 't SLiteral.t;
+       rhs : 'f list;
+       polarity : polarity;
+       as_form : 'f list;
+     }  (** [forall vars, lhs op bigand rhs] where [op] depends on
           [polarity] (in [{=>, <=>, <=}]) *)
 
 type ('f, 't, 'ty) def = {
-    def_id : ID.t;
-    def_ty : 'ty; (* def_ty = def_vars -> def_ty_ret *)
-    def_rules : ('f, 't, 'ty) def_rule list;
-    def_rewrite : bool; (* rewrite rule or mere assertion? *)
-  }
+   def_id : ID.t;
+   def_ty : 'ty; (* def_ty = def_vars -> def_ty_ret *)
+   def_rules : ('f, 't, 'ty) def_rule list;
+   def_rewrite : bool; (* rewrite rule or mere assertion? *)
+ }
 
 type ('f, 't, 'ty) view =
-    | TyDecl of ID.t * 'ty  (** id: ty *)
-    | Data of 'ty data list
-    | Def of ('f, 't, 'ty) def list
-    | Rewrite of ('f, 't, 'ty) def_rule
-    | Assert of 'f  (** assert form *)
-    | Lemma of 'f list  (** lemma to prove and use, using Avatar cut *)
-    | Goal of 'f  (** goal to prove *)
-    | NegatedGoal of 'ty skolem list * 'f list  (** goal after negation, with skolems *)
+   | TyDecl of ID.t * 'ty  (** id: ty *)
+   | Data of 'ty data list
+   | Def of ('f, 't, 'ty) def list
+   | Rewrite of ('f, 't, 'ty) def_rule
+   | Assert of 'f  (** assert form *)
+   | Lemma of 'f list  (** lemma to prove and use, using Avatar cut *)
+   | Goal of 'f  (** goal to prove *)
+   | NegatedGoal of 'ty skolem list * 'f list  (** goal after negation, with skolems *)
 
 type lit = Term.t SLiteral.t
 type formula = TypedSTerm.t
@@ -64,12 +64,12 @@ type input_def = (TypedSTerm.t, TypedSTerm.t, TypedSTerm.t) def
 type clause = lit list
 
 type ('f, 't, 'ty) t = private {
-    id : int;
-    view : ('f, 't, 'ty) view;
-    attrs : attrs;
-    proof : proof;
-    mutable name : string option;
-  }
+   id : int;
+   view : ('f, 't, 'ty) view;
+   attrs : attrs;
+   proof : proof;
+   mutable name : string option;
+ }
 
 and proof = Proof.Step.t
 and input_t = (TypedSTerm.t, TypedSTerm.t, TypedSTerm.t) t
@@ -115,8 +115,7 @@ val map_def :
 val map_def_rule :
   form:('a -> 'b) -> term:('c -> 'd) -> ty:('e -> 'f) -> ('a, 'c, 'e) def_rule -> ('b, 'd, 'f) def_rule
 
-val map :
-  form:('f1 -> 'f2) -> term:('t1 -> 't2) -> ty:('ty1 -> 'ty2) -> ('f1, 't1, 'ty1) t -> ('f2, 't2, 'ty2) t
+val map : form:('f1 -> 'f2) -> term:('t1 -> 't2) -> ty:('ty1 -> 'ty2) -> ('f1, 't1, 'ty1) t -> ('f2, 't2, 'ty2) t
 
 (** {2 Defined Constants} *)
 

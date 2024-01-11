@@ -30,12 +30,12 @@ val pp_builtin : builtin CCFormat.printer
 val builtin_conv : builtin -> Builtin.t
 
 type view = private
-    | Builtin of builtin
-    | Var of t HVar.t
-    | DB of int
-    | App of ID.t * t list  (** parametrized type *)
-    | Fun of t list * t  (** Function type (left to right, no left-nesting) *)
-    | Forall of t  (** explicit quantification using De Bruijn index *)
+   | Builtin of builtin
+   | Var of t HVar.t
+   | DB of int
+   | App of ID.t * t list  (** parametrized type *)
+   | Fun of t list * t  (** Function type (left to right, no left-nesting) *)
+   | Forall of t  (** explicit quantification using De Bruijn index *)
 
 val view : t -> view
 (** Type-centric view of the head of this type.
@@ -108,8 +108,8 @@ val cast_var_unsafe : InnerTerm.t HVar.t -> t HVar.t
 (** {2 Definition} *)
 
 type def =
-    | Def_unin of int (* number of type variables *)
-    | Def_data of int * ty list (* data type with number of variables and cstors *)
+   | Def_unin of int (* number of type variables *)
+   | Def_data of int * ty list (* data type with number of variables and cstors *)
 
 val def : ID.t -> def option
 (** Access the definition of a type *)

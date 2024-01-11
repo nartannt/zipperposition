@@ -10,14 +10,14 @@ module Constraint : sig
   type expr = ID.t
 
   type t =
-      | EQ of expr * expr
-      | LE of expr * expr
-      | LT of expr * expr
-      | And of t list
-      | Or of t list
-      | Not of t
-      | True (* tautology *)
-      | False (* impossible constraint *)
+     | EQ of expr * expr
+     | LE of expr * expr
+     | LT of expr * expr
+     | And of t list
+     | Or of t list
+     | Not of t
+     | True (* tautology *)
+     | False (* impossible constraint *)
 
   val eq : expr -> expr -> t
   val neq : expr -> expr -> t

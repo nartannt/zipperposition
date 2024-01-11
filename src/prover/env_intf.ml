@@ -75,10 +75,10 @@ module type S = sig
       Must return [None] if the clause is unmodified *)
 
   type 'a conversion_result =
-      | CR_skip  (** rule didn't fire *)
-      | CR_drop  (** drop the clause from the proof state *)
-      | CR_add of 'a  (** add this to the result *)
-      | CR_return of 'a  (** shortcut the remaining rules, return this *)
+     | CR_skip  (** rule didn't fire *)
+     | CR_drop  (** drop the clause from the proof state *)
+     | CR_add of 'a  (** add this to the result *)
+     | CR_return of 'a  (** shortcut the remaining rules, return this *)
 
   type clause_conversion_rule = Statement.clause_t -> C.t list conversion_result
   (** A hook to convert a particular statement into a list

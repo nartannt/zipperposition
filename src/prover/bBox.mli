@@ -13,10 +13,10 @@ val section : Util.Section.t
 type inductive_case = Cover_set.case
 
 type payload = private
-    | Fresh (* fresh literal with no particular payload *)
-    | Clause_component of Literals.t
-    | Lemma of Cut_form.t
-    | Case of inductive_case list
+   | Fresh (* fresh literal with no particular payload *)
+   | Clause_component of Literals.t
+   | Lemma of Cut_form.t
+   | Case of inductive_case list
 
 module Lit : Bool_lit_intf.S with type payload = payload
 

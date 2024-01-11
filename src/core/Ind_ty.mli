@@ -12,26 +12,26 @@ type constructor = private { cstor_name : ID.t; cstor_ty : Type.t; cstor_args : 
 (** Constructor for an inductive type *)
 
 and projector = private {
-    p_id : ID.t;
-    p_ty : Type.t;
-    p_index : int; (* index of projected argument *)
-    p_cstor : constructor lazy_t;
-  }
+   p_id : ID.t;
+   p_ty : Type.t;
+   p_index : int; (* index of projected argument *)
+   p_cstor : constructor lazy_t;
+ }
 (** A projector for a given constructor and argument position *)
 
 (** {5 Inductive Types} *)
 
 type t = private {
-    ty_id : ID.t; (* name *)
-    ty_vars : Type.t HVar.t list; (* list of variables *)
-    ty_pattern : Type.t; (* equal to  [id ty_vars] *)
-    ty_constructors : constructor list;
-    (* constructors, all returning [pattern] and containing
-       no other type variables than [ty_vars] *)
-    ty_is_rec : bool lazy_t;
-    (* true iff the type is (mutually) recursive *)
-    ty_proof : Proof.t;
-  }
+   ty_id : ID.t; (* name *)
+   ty_vars : Type.t HVar.t list; (* list of variables *)
+   ty_pattern : Type.t; (* equal to  [id ty_vars] *)
+   ty_constructors : constructor list;
+   (* constructors, all returning [pattern] and containing
+      no other type variables than [ty_vars] *)
+   ty_is_rec : bool lazy_t;
+   (* true iff the type is (mutually) recursive *)
+   ty_proof : Proof.t;
+ }
 (** An inductive type, along with its set of constructors *)
 
 val pp : t CCFormat.printer

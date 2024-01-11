@@ -10,10 +10,10 @@ type form = STerm.t
 type clause = term SLiteral.t list
 
 type t =
-    | Axiom of string * string (* filename, axiom name *)
-    | Theory of string (* a theory used to do an inference *)
-    | InferForm of form * step lazy_t
-    | InferClause of clause * step lazy_t
+   | Axiom of string * string (* filename, axiom name *)
+   | Theory of string (* a theory used to do an inference *)
+   | InferForm of form * step lazy_t
+   | InferClause of clause * step lazy_t
 
 and step = { id : id; rule : string; parents : t array; esa : bool  (** Equisatisfiable step? *) }
 

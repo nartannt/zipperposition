@@ -23,22 +23,22 @@
 module I = Int32
 
 type t = private {
-    term : view;
-    ty : type_result;
-    mutable id : int;
-    mutable payload : exn;
-    props : I.t;
-    ho_weight : int lazy_t;
-  }
+   term : view;
+   ty : type_result;
+   mutable id : int;
+   mutable payload : exn;
+   props : I.t;
+   ho_weight : int lazy_t;
+ }
 (** Abstract type of term *)
 
 and view = private
-    | Var of t HVar.t  (** Free variable *)
-    | DB of int
-    | Bind of Binder.t * t * t  (** Type, sub-term *)
-    | Const of ID.t  (** Constant *)
-    | App of t * t list  (** Uncurried application *)
-    | AppBuiltin of Builtin.t * t list  (** For representing special constructors *)
+   | Var of t HVar.t  (** Free variable *)
+   | DB of int
+   | Bind of Binder.t * t * t  (** Type, sub-term *)
+   | Const of ID.t  (** Constant *)
+   | App of t * t list  (** Uncurried application *)
+   | AppBuiltin of Builtin.t * t list  (** For representing special constructors *)
 
 and type_result = NoType | HasType of t
 

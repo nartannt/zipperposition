@@ -22,11 +22,11 @@ module A = Ast_tptp
 
 module Prover : sig
   type t = {
-      name : string;  (** name of the prover *)
-      command : string;  (** command to call prover*)
-      unsat : string list;  (** prover returned unsat (possible outputs)*)
-      sat : string list;  (** prover returned sat (possible outputs)*)
-    }
+     name : string;  (** name of the prover *)
+     command : string;  (** command to call prover*)
+     unsat : string list;  (** prover returned unsat (possible outputs)*)
+     sat : string list;  (** prover returned sat (possible outputs)*)
+   }
   (** data useful to invoke a prover. The prover must read from
         stdin. The command is interpolated using {! Buffer.add_substitude}, with
         the given patterns:
@@ -75,11 +75,11 @@ val call_with_out :
 
 module Eprover : sig
   type result = {
-      answer : szs_answer;
-      output : string;
-      decls : untyped A.t Iter.t option;
-      proof : Trace_tstp.t option;
-    }
+     answer : szs_answer;
+     output : string;
+     decls : untyped A.t Iter.t option;
+     proof : Trace_tstp.t option;
+   }
 
   and szs_answer = Theorem | CounterSatisfiable | Unknown
 

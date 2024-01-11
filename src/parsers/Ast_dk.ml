@@ -24,8 +24,8 @@ let ty_aliases : (string, ty) Hashtbl.t = Hashtbl.create 16
 let find_alias ~or_else (s : string) : ty = try Hashtbl.find ty_aliases s with Not_found -> or_else
 
 let add_alias s ty : unit =
-    Util.debugf 2 "Registering alias %s := %a" (fun k -> k s T.pp ty);
-    Hashtbl.replace ty_aliases s ty
+   Util.debugf 2 "Registering alias %s := %a" (fun k -> k s T.pp ty);
+   Hashtbl.replace ty_aliases s ty
 
 (* Needed for parsing number literals *)
 let type_nat = mk_const_t "dk_nat.nat"

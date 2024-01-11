@@ -30,10 +30,10 @@ let is_trivial trail = Lit.Set.exists (fun i -> Lit.Set.mem (Lit.neg i) trail) t
 let merge = Lit.Set.union
 
 let merge_l = function
-    | [] -> Lit.Set.empty
-    | [ t ] -> t
-    | [ t1; t2 ] -> Lit.Set.union t1 t2
-    | t :: l -> List.fold_left Lit.Set.union t l
+   | [] -> Lit.Set.empty
+   | [ t ] -> t
+   | [ t1; t2 ] -> Lit.Set.union t1 t2
+   | t :: l -> List.fold_left Lit.Set.union t l
 
 let filter = Lit.Set.filter
 
@@ -41,15 +41,15 @@ type valuation = Lit.t -> bool
 (** A boolean valuation *)
 
 let is_active trail ~v =
-    Lit.Set.for_all
-      (fun i ->
-        let j = Lit.abs i in
-            Lit.sign i = v j) (* valuation match sign *)
-      trail
+   Lit.Set.for_all
+     (fun i ->
+       let j = Lit.abs i in
+          Lit.sign i = v j) (* valuation match sign *)
+     trail
 
 let to_iter = Lit.Set.to_iter
 let labels (t : t) = to_iter t |> Iter.map BBox.Lit.to_int |> Util.Int_set.of_iter
 
 let to_s_form (t : t) =
-    let module F = TypedSTerm.Form in
-    match to_list t |> List.map BBox.to_s_form with [] -> F.true_ | [ f ] -> f | l -> F.and_ l
+   let module F = TypedSTerm.Form in
+   match to_list t |> List.map BBox.to_s_form with [] -> F.true_ | [ f ] -> f | l -> F.and_ l

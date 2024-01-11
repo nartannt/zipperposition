@@ -5,12 +5,12 @@ module type S = sig
   module C : Clause.S with module Ctx = Ctx
 
   type t = private {
-      id : int;  (** unique ID of the stream *)
-      parents : C.t list;  (** parent clauses for inference generating this stream *)
-      mutable penalty : int;  (** heuristic penalty *)
-      mutable hits : int;  (** how many attemts to retrieve unifier were there  *)
-      mutable stm : C.t option OSeq.t;  (** the stream itself *)
-    }
+     id : int;  (** unique ID of the stream *)
+     parents : C.t list;  (** parent clauses for inference generating this stream *)
+     mutable penalty : int;  (** heuristic penalty *)
+     mutable hits : int;  (** how many attemts to retrieve unifier were there  *)
+     mutable stm : C.t option OSeq.t;  (** the stream itself *)
+   }
 
   exception Empty_Stream
   exception Drip_n_Unfinished of C.t option list * int * int

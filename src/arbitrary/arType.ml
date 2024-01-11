@@ -17,42 +17,42 @@ let list_ = ID.make "list"
 let prod_ = ID.make "prod"
 
 let ground_g =
-    let open QCheck.Gen in
-    let base = oneofl Type.[ term; int; a_; b_ ] in
-    let g =
-        fix (fun self n ->
-            let sub = self (n - 1) in
-                if n <= 0 then base
-                else
-                  frequency
-                    [
-                      (1, map (Type.app list_) (list_repeat 1 sub));
-                      (1, map (Type.app prod_) (list_repeat 2 sub));
-                      (1, map2 Type.arrow (list_size (1 -- 2) sub) sub);
-                      (3, base);
-                    ])
-    in
-        1 -- 4 >>= g
+   let open QCheck.Gen in
+   let base = oneofl Type.[ term; int; a_; b_ ] in
+   let g =
+      fix (fun self n ->
+          let sub = self (n - 1) in
+             if n <= 0 then base
+             else
+               frequency
+                 [
+                   (1, map (Type.app list_) (list_repeat 1 sub));
+                   (1, map (Type.app prod_) (list_repeat 2 sub));
+                   (1, map2 Type.arrow (list_size (1 -- 2) sub) sub);
+                   (3, base);
+                 ])
+   in
+      1 -- 4 >>= g
 
 let ground = mk_ ground_g
 
 let default_g =
-    let open QCheck.Gen in
-    let var = oneofl [ Type.var_of_int 0; Type.var_of_int 1 ] in
-    let base = oneof [ oneofl [ Type.term; Type.int; a_; b_ ]; var ] in
-    let g =
-        fix (fun self n ->
-            let sub = self (n - 1) in
-                if n <= 0 then base
-                else
-                  frequency
-                    [
-                      (1, map (Type.app list_) (list_repeat 1 sub));
-                      (1, map (Type.app prod_) (list_repeat 2 sub));
-                      (1, map2 Type.arrow (list_size (1 -- 2) sub) sub);
-                      (3, base);
-                    ])
-    in
-        1 -- 4 >>= g
+   let open QCheck.Gen in
+   let var = oneofl [ Type.var_of_int 0; Type.var_of_int 1 ] in
+   let base = oneof [ oneofl [ Type.term; Type.int; a_; b_ ]; var ] in
+   let g =
+      fix (fun self n ->
+          let sub = self (n - 1) in
+             if n <= 0 then base
+             else
+               frequency
+                 [
+                   (1, map (Type.app list_) (list_repeat 1 sub));
+                   (1, map (Type.app prod_) (list_repeat 2 sub));
+                   (1, map2 Type.arrow (list_size (1 -- 2) sub) sub);
+                   (3, base);
+                 ])
+   in
+      1 -- 4 >>= g
 
 let default = mk_ default_g

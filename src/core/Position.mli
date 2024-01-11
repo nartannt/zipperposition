@@ -15,13 +15,13 @@
 
 (** A position is a path in a tree *)
 type t =
-    | Stop
-    | Type of t  (** Switch to type *)
-    | Left of t  (** Left term in curried application *)
-    | Right of t  (** Right term in curried application, and subterm of binder *)
-    | Head of t  (** Head of uncurried term *)
-    | Arg of int * t  (** argument term in uncurried term, or in multiset *)
-    | Body of t  (** Body of binder or horn clause *)
+   | Stop
+   | Type of t  (** Switch to type *)
+   | Left of t  (** Left term in curried application *)
+   | Right of t  (** Right term in curried application, and subterm of binder *)
+   | Head of t  (** Head of uncurried term *)
+   | Arg of int * t  (** argument term in uncurried term, or in multiset *)
+   | Body of t  (** Body of binder or horn clause *)
 
 type position = t
 

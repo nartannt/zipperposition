@@ -8,11 +8,11 @@ module TPSet : CCSet.S with type elt = Term.t * Position.t
 type flag
 
 type t = private {
-    id : int;  (** unique ID of the clause *)
-    lits : Literal.t array;  (** the literals *)
-    trail : Trail.t;  (** boolean trail *)
-    mutable flags : flag;  (** boolean flags for the clause *)
-  }
+   id : int;  (** unique ID of the clause *)
+   lits : Literal.t array;  (** the literals *)
+   trail : Trail.t;  (** boolean trail *)
+   mutable flags : flag;  (** boolean flags for the clause *)
+ }
 
 (** {2 Basics} *)
 

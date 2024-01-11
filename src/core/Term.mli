@@ -22,12 +22,12 @@ type var = Type.t HVar.t
 (** Variables are typed with {!Type.t} *)
 
 type view = private
-    | AppBuiltin of Builtin.t * t list
-    | DB of int  (** Bound variable (De Bruijn index) *)
-    | Var of var  (** Term variable *)
-    | Const of ID.t  (** Typed constant *)
-    | App of t * t list  (** Application to a list of terms (cannot be left-nested) *)
-    | Fun of Type.t * t  (** Lambda abstraction *)
+   | AppBuiltin of Builtin.t * t list
+   | DB of int  (** Bound variable (De Bruijn index) *)
+   | Var of var  (** Term variable *)
+   | Const of ID.t  (** Typed constant *)
+   | App of t * t list  (** Application to a list of terms (cannot be left-nested) *)
+   | Fun of Type.t * t  (** Lambda abstraction *)
 
 val view : t -> view
 
@@ -37,11 +37,11 @@ val view : t -> view
     that focuses on first-order logic. *)
 module Classic : sig
   type view = private
-      | Var of var
-      | DB of int
-      | App of ID.t * t list  (** covers Const and App *)
-      | AppBuiltin of Builtin.t * t list
-      | NonFO  (** any other case *)
+     | Var of var
+     | DB of int
+     | App of ID.t * t list  (** covers Const and App *)
+     | AppBuiltin of Builtin.t * t list
+     | NonFO  (** any other case *)
 
   val view : t -> view
 end
