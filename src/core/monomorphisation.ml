@@ -11,8 +11,9 @@ module ClauseArgMap = Map.Make (Int)
 module SubstMap = Map.Make (Int)
 module PbSubstMap = Map.Make (Int)
 
-(* Note: for ease of notation, variables, functions ... abuse the term "polymorphic" using it in the sense of "non-monomorphic" *)
-(* in particular "poly" and "mono" have the same number of characters as opposed to "non-mono" and "mono"*)
+(* Note: for ease of notation, variables, functions, comments ... abuse the terms monomorphic and polymorphic 
+ * our base language supports polymorphism and formally all the types we handle are polymorphic
+ * instead monomorphic should be understood as instantiated (or ground i believe) and polymorphic as not that *)
 
 (* TODO make a neat little module with an elegant interface *)
 (* TODO have bounds be options accessible from the toplevel command *)
@@ -176,7 +177,10 @@ let merge = ref false
 
 (* takes a map of function symbols to monomorphic type arguments
  * takes a map of function symbols to polymorphic type arguments
- * returns an iter of the type substitutions that can be derived from the given maps *)
+ * returns a pair of iters corresponding to the substitutions generated from new polymorphic type args
+ * and those from old polymorphic type args and new monomorphic type args *)
+(* TODO NEXT add bounds to limit the number of substitutions we generate 
+ * sometimes we generate 100k or 200k substitutions which is ridiculous *)
 let derive_type_arg_subst mono_map poly_map =
    (*derives the substitutions from two sets (iters) of type arguments*)
    let type_arg_iter_subst mono_type_args_iter poly_type_args_iter =
@@ -252,8 +256,6 @@ let print_all_type_args ?(erase_empty = false) fun_sym iter =
      Iter.iter
        (fun ty_args -> Printf.printf "%s\n" (String.concat "; " (List.map Ty.to_string ty_args)))
        (snd iter))
-
-let all_arr_len = ref 0
 
 (* given a subst map, an iter of substitutions and the current iteration,
    will update the map accordingly*)
@@ -339,33 +341,34 @@ let restricted_subst_eq (ty_var_iter : Ty.t HVar.t Iter.t) subst_1 subst_2 =
         (fun ty_var -> eq_sc_term_opt (Subst.find subst_1 (ty_var, 0)) (Subst.find subst_2 (ty_var, 0)))
         (ty_var_iter :> InnerTerm.t HVar.t Iter.t)
 
+(* computes bounds relative to function symbols *)
+let max_new_ty_args fun_sym mono_map poly_map bounds =
+   let all_mono_ty_args = ArgMap.find fun_sym mono_map in
+   let all_poly_ty_args = ArgMap.find fun_sym poly_map in
+   let max_mono_bound =
+      max_nb
+        (Iter.length (fst all_mono_ty_args) + Iter.length (snd all_mono_ty_args))
+        bounds.mono_ty_args_per_fun_sym
+   in
+   let max_poly_bound =
+      max_nb
+        (Iter.length (fst all_poly_ty_args) + Iter.length (snd all_poly_ty_args))
+        bounds.poly_ty_args_per_fun_sym
+   in
+      (max_mono_bound, max_poly_bound)
+
 (* given the poly map of a clause and the mono map
  * given an iter of substitutions derived from new poly type args
  * given an iter of substitutions derived from old poly type args and new mono type args
  * returns an updated mono and poly map, where the substitutions have been applied (with respect to the bounds)
  * returns an iter of the substitutions that were actually used*)
 let apply_subst_map mono_map poly_map new_poly_subst_all old_poly_subst_all bounds =
-   let max_new_ty_args fun_sym =
-      let all_mono_ty_args = ArgMap.find fun_sym mono_map in
-      let all_poly_ty_args = ArgMap.find fun_sym poly_map in
-      let max_mono_bound =
-         max_nb
-           (Iter.length (fst all_mono_ty_args) + Iter.length (snd all_mono_ty_args))
-           bounds.mono_ty_args_per_fun_sym
-      in
-      let max_poly_bound =
-         max_nb
-           (Iter.length (fst all_poly_ty_args) + Iter.length (snd all_poly_ty_args))
-           bounds.poly_ty_args_per_fun_sym
-      in
-         (max_mono_bound, max_poly_bound)
-   in
 
    let clause_poly_total =
       ArgMap.fold
         (fun _ (old_ty_args, new_ty_args) acc -> acc + Iter.length old_ty_args + Iter.length new_ty_args)
-        poly_map 0
-   in
+        poly_map 0 in
+
    let mono_clause_max = max_nb clause_poly_total bounds.mono_ty_args_per_clause in
    let poly_clause_max = max_nb clause_poly_total bounds.poly_ty_args_per_clause in
 
@@ -377,7 +380,7 @@ let apply_subst_map mono_map poly_map new_poly_subst_all old_poly_subst_all boun
        * we also have bounds that limit the number of new type arguments that can be generated for
        * each clause *)
       let remaining_clause_mono, remaining_clause_poly = acc_remaining in
-      let remaining_fun_sym_mono, remaining_fun_sym_poly = max_new_ty_args fun_sym in
+      let remaining_fun_sym_mono, remaining_fun_sym_poly = max_new_ty_args fun_sym mono_map poly_map bounds in
       let remaining_local_mono = min remaining_clause_mono remaining_fun_sym_mono in
       let remaining_local_poly = min remaining_clause_poly remaining_fun_sym_poly in
 
@@ -422,8 +425,6 @@ let apply_subst_map mono_map poly_map new_poly_subst_all old_poly_subst_all boun
       
    in
 
-
-   (*let old_res = ArgMap.fold apply_subst_fun_sym poly_map (ArgMap.empty, ArgMap.empty, Iter.empty) in*)
    let (new_mono_map, new_poly_map), _, used_substs = 
       ArgMap.fold update_maps poly_map ((ArgMap.empty, ArgMap.empty), (mono_clause_max, poly_clause_max), Iter.empty) in
    new_mono_map, new_poly_map, used_substs
@@ -808,7 +809,6 @@ let monomorphise_problem clause_list =
       let var_eq = HVar.equal (fun _ _ -> true) in
       let clause_ty_vars lit_arr =
          (*Printf.printf "lit_arr length %i\n" (Array.length lit_arr);*)
-         all_arr_len := !all_arr_len + Array.length lit_arr;
          (* TODO check that this persistent lazy is worth it *)
          let all_vars =
             remove_duplicates ~eq:var_eq
