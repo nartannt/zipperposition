@@ -422,63 +422,6 @@ let apply_subst_map mono_map poly_map new_poly_subst_all old_poly_subst_all boun
       
    in
 
-   let apply_subst_fun_sym fun_sym (old_poly_ty_args, new_poly_ty_args)
-       (acc_mono_map, acc_poly_map, acc_used_substs) =
-      let max_mono_bound, max_poly_bound = max_new_ty_args fun_sym in
-
-      (* TODO make version of the function that specialises for only generating monomorphic type arguments*)
-      let generate_unique subst_all poly_ty_args mono_bound poly_bound =
-         let ty_var_eq = HVar.equal my_ty_eq in
-         let ty_var_iter =
-            remove_duplicates ~eq:ty_var_eq
-              (Iter.flat_map
-                 (fun ty_args ->
-                   List.fold_left (fun acc ty -> Iter.append acc (Ty.Seq.vars ty)) Iter.empty ty_args)
-                 poly_ty_args)
-         in
-         (* removes substitutions which only differ on type variables that do not appear in poly_ty_args*)
-         let subst_all_unique = remove_duplicates ~eq:(restricted_subst_eq ty_var_iter) subst_all in
-
-         if Iter.is_empty subst_all || Iter.is_empty poly_ty_args then (Iter.empty, Iter.empty, Iter.empty)
-         else
-           (* TODO this means we need to remove duplicates earlier when adding type arguments to the map *)
-           let mono_res, poly_res, used_substs =
-              generate_ty_args subst_all_unique
-                (remove_duplicates ~eq:ty_arg_eq poly_ty_args)
-                mono_bound poly_bound
-           in
-              (remove_duplicates ~eq:ty_arg_eq mono_res, remove_duplicates ~eq:ty_arg_eq poly_res, used_substs)
-      in
-
-      (* substitutions derived from the new polymorphic type arguments *)
-      (* note, using numbers instead of something like new_new_old_mono_ty args for obvious reasons, maybe could find a better way*)
-      let new_mono_ty_args_1, new_poly_ty_args_1, used_subst_1 =
-         generate_unique new_poly_subst_all new_poly_ty_args max_mono_bound max_poly_bound
-      in
-
-      let new_mono_bound = max_mono_bound - Iter.length new_mono_ty_args_1 in
-      let new_poly_bound = max_poly_bound - Iter.length new_poly_ty_args_1 in
-
-      (* substitutions derived from the old polymorphic type arguments *)
-      let new_mono_ty_args_2, new_poly_ty_args_2, used_substs_2 =
-         generate_unique old_poly_subst_all old_poly_ty_args new_mono_bound new_poly_bound
-      in
-
-      (* note that if the same type arguments are generated over the different iterations (probably shouldn't be possible unless
-       * and new subst overlap) then we generate less type arguments than we could have *)
-      let all_new_mono_ty_args = Iter.union ~eq:ty_arg_eq new_mono_ty_args_1 new_mono_ty_args_2 in
-      let all_new_poly_ty_args = Iter.union ~eq:ty_arg_eq new_poly_ty_args_1 new_poly_ty_args_2 in
-
-      let all_used_substs = Iter.append used_subst_1 used_substs_2 in
-      (*Printf.printf "we have %i new mono ty args\n" (Iter.length all_new_mono_ty_args);*)
-      let fun_update new_ty_args = function
-         | Some curr_ty_args -> Some (Iter.union ~eq:ty_arg_eq curr_ty_args new_ty_args)
-         | None -> Some new_ty_args
-      in
-         ( ArgMap.update fun_sym (fun_update all_new_mono_ty_args) acc_mono_map,
-           ArgMap.update fun_sym (fun_update all_new_poly_ty_args) acc_poly_map,
-           Iter.append acc_used_substs all_used_substs )
-   in
 
    (*let old_res = ArgMap.fold apply_subst_fun_sym poly_map (ArgMap.empty, ArgMap.empty, Iter.empty) in*)
    let (new_mono_map, new_poly_map), _, used_substs = 
