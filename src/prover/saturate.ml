@@ -20,17 +20,18 @@ let check_timeout = function None -> false | Some timeout -> Util.total_time_s (
 let e_path = ref (None : string option)
 let tried_e = ref false
 let e_call_point = ref 0.2
+let _e_call_step = ref (-1)
 
-let should_try_e = function
+let should_try_e curr_step = function
    | Some timeout when CCOpt.is_some !e_path ->
       let passed = Util.total_time_s () in
-         if (not !tried_e) && passed > !e_call_point *. timeout then (
+         if (not !tried_e) && (passed > !e_call_point *. timeout || curr_step >= !_e_call_step) then (
            tried_e := true;
            true)
          else false
    | _ -> false
 
-let _progress = ref true (* progress bar? *)
+let _progress = ref false(* progress bar? *)
 let _check_types = ref false
 let _max_multi_simpl = ref (-1)
 
@@ -263,7 +264,7 @@ module Make (E : Env.S) = struct
                                Env.add_passive (Iter.singleton c)
                            | _ -> ());*)
                 let res_opt =
-                   if should_try_e timeout then EInterface.try_e (Env.get_active ()) (Env.get_passive ())
+                   if should_try_e num timeout then EInterface.try_e (Env.get_active ()) (Env.get_passive ())
                    else None
                 in
 
@@ -304,11 +305,15 @@ let () =
        ("--check-types", Arg.Set _check_types, " check types in new clauses");
        ( "--max-multi-simpl-depth",
          Arg.Int (( := ) _max_multi_simpl),
-         " maixmum depth of multi step simplification. -1 disables maximum depth." );
+         " maximum depth of multi step simplification. -1 disables maximum depth." );
        ("--try-e", Arg.String (fun path -> e_path := Some path), " try the given eprover binary on the problem");
        ("--disable-e", Arg.Unit (fun () -> e_path := None), " disable E background reasoner");
        ( "--e-call-point",
          Arg.Float
            (fun v -> if v > 1.0 || v < 0.0 then invalid_arg "0 <= e-call-point <= 1.0" else e_call_point := v),
          " point in the runtime when E is called in range 0.0 to 1.0 " );
+      ("--e-call-step",
+         Arg.Int ((:= ) _e_call_step),
+         " number of steps after which E is called, if e-call-point is also set, E will be called when the first of the two condition is met. TODO make sure both options cannot be set simultaneously."
+      );
      ]

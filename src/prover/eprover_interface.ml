@@ -252,6 +252,7 @@ module Make (E : Env.S) : S with module Env = E = struct
 
      let take_initial ~converter () =
         (*Printf.printf "TAKE INITIAL: %i\n" (C.ClauseSet.cardinal !init_clauses);*)
+        (*List.iter (fun cl -> Printf.printf "\ninitial clause: %s" (C.to_string cl)) (C.ClauseSet.to_list !init_clauses);*)
         let module CS = C.ClauseSet in
         CS.filter (fun c -> not (lambdas_too_deep c)) !init_clauses
         |> CS.to_iter
@@ -295,6 +296,7 @@ module Make (E : Env.S) : S with module Env = E = struct
        (*List.iter (fun cl -> Printf.printf "\nWe have a clause: %s" (C.to_string cl)) ((E.C.ClauseSet.to_list !init_clauses) @ (Iter.to_list poly_active_set) @ (Iter.to_list poly_passive_set));*)
        (*List.iter (fun cl -> Printf.printf "\nWe have a clause: %s" (C.to_string cl)) (poly_initial @ (Iter.to_list poly_active_set) @ (Iter.to_list poly_passive_set));*)
        (*List.iter (fun cl -> Printf.printf "\nWe have a clause: %s" (C.to_string cl)) ([] @ (Iter.to_list poly_active_set) @ (Iter.to_list poly_passive_set));*)
+
        let reconstruct_clause (clause_id, new_lits) original_clause =
           if clause_id = C.id original_clause then
             (* TODO check that this is indeed a simplification*)
@@ -312,7 +314,8 @@ module Make (E : Env.S) : S with module Env = E = struct
 
        let clause_list =
           Iter.to_list
-            (Iter.union ~eq:C.equal (Iter.of_list poly_initial)
+            (*(Iter.union ~eq:C.equal (Iter.of_list poly_initial)*)
+            (
                (Iter.union ~eq:C.equal poly_active_set poly_passive_set))
        in
        (*List.iter (fun cl -> Printf.printf "\noriginal clause: %s" (C.to_string cl)) clause_list;*)
