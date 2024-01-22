@@ -639,7 +639,8 @@ module Ty = struct
   let mangle ty =
      let add_id buf id =
         let s = ID.name id |> CCString.filter (function '#' -> false | _ -> true) in
-           Buffer.add_string buf s
+           Buffer.add_string buf s;
+           Buffer.add_string buf "_u"
      in
      let rec aux buf t =
         match view t with
@@ -1502,13 +1503,12 @@ let rec erase t ?(mangle = false) =
       | Some ty_res when is_tType ty_res && mangle -> mangle_erase t
       | _ -> (
          match view t with
-            (* TODO temporary hackish fix*)
-            | Var v -> STerm.var (shitty_var_replace (Var.to_string v))
-            | Const s -> STerm.const (ID.to_string s)
+            | Var v -> STerm.var (Var.to_string v)
+            | Const s -> STerm.const (ID.to_string s ^ "_u")
             | App (f, l) -> STerm.app (erase f ~mangle) (List.map (erase ~mangle) l)
             | Bind (b, v, t) ->
                STerm.bind b
-                 [ (STerm.V (shitty_var_replace (Var.to_string v)), Some (erase (Var.ty v) ~mangle)) ]
+                 [ (STerm.V (Var.to_string v), Some (erase (Var.ty v) ~mangle)) ]
                  (erase t ~mangle)
             | AppBuiltin (b, l) -> STerm.app_builtin b (List.map (erase ~mangle) l)
             | Ite (a, b, c) -> STerm.ite (erase a ~mangle) (erase b ~mangle) (erase c ~mangle)
@@ -1518,7 +1518,7 @@ let rec erase t ?(mangle = false) =
                   List.map
                     (fun (c, vars, rhs) ->
                       (* type arguments of [c] are ignored as being implicit *)
-                      let c = ID.to_string c.cstor_id in
+                      let c = ID.to_string c.cstor_id ^ "_u" in
                       let vars = List.map (fun v -> STerm.V (Var.to_string v)) vars in
                       let rhs = erase rhs ~mangle in
                          STerm.Match_case (c, vars, rhs))

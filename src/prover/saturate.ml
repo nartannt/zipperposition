@@ -31,7 +31,7 @@ let should_try_e curr_step = function
          else false
    | _ -> false
 
-let _progress = ref false(* progress bar? *)
+let _progress = ref false (* progress bar? *)
 let _check_types = ref false
 let _max_multi_simpl = ref (-1)
 
@@ -312,8 +312,8 @@ let () =
          Arg.Float
            (fun v -> if v > 1.0 || v < 0.0 then invalid_arg "0 <= e-call-point <= 1.0" else e_call_point := v),
          " point in the runtime when E is called in range 0.0 to 1.0 " );
-      ("--e-call-step",
-         Arg.Int ((:= ) _e_call_step),
-         " number of steps after which E is called, if e-call-point is also set, E will be called when the first of the two condition is met. TODO make sure both options cannot be set simultaneously."
-      );
+       ( "--e-call-step",
+         Arg.Int (( := ) _e_call_step),
+         " number of steps after which E is called, if e-call-point is also set, E will be called when the \
+          first of the two condition is met. TODO make sure both options cannot be set simultaneously." );
      ]

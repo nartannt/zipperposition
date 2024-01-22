@@ -392,7 +392,8 @@ let mangle (ty : t) : string =
          (*|> CCString.filter (function '#' | '_' -> false | _ -> true)*)
          |> CCString.filter (function '#' -> false | _ -> true)
       in
-         Buffer.add_string buf s
+         Buffer.add_string buf s;
+         Buffer.add_string buf "_u"
    in
    let rec aux buf t =
       match view t with
