@@ -256,13 +256,6 @@ module Make (E : Env.S) = struct
                 (* do one step *)
                 if !_progress then print_progress num ~steps;
 
-                (*(if should_try_e timeout then
-                   let res = EInterface.try_e (Env.get_active ()) (Env.get_passive ()) in
-                       match res with
-                           | Some c ->
-                               Printf.printf "Yipeeee\n";
-                               Env.add_passive (Iter.singleton c)
-                           | _ -> ());*)
                 let res_opt =
                    if should_try_e num timeout then EInterface.try_e (Env.get_active ()) (Env.get_passive ())
                    else None
@@ -270,7 +263,6 @@ module Make (E : Env.S) = struct
 
                 match res_opt with
                    | Some proof ->
-                      Printf.printf "Yipeeee\n";
                       (Unsat proof, num)
                    | None -> (
                       let status = given_clause_step ~generating num in

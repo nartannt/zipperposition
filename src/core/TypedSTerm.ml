@@ -1507,9 +1507,7 @@ let rec erase t ?(mangle = false) =
             | Const s -> STerm.const (ID.to_string s ^ "_u")
             | App (f, l) -> STerm.app (erase f ~mangle) (List.map (erase ~mangle) l)
             | Bind (b, v, t) ->
-               STerm.bind b
-                 [ (STerm.V (Var.to_string v), Some (erase (Var.ty v) ~mangle)) ]
-                 (erase t ~mangle)
+               STerm.bind b [ (STerm.V (Var.to_string v), Some (erase (Var.ty v) ~mangle)) ] (erase t ~mangle)
             | AppBuiltin (b, l) -> STerm.app_builtin b (List.map (erase ~mangle) l)
             | Ite (a, b, c) -> STerm.ite (erase a ~mangle) (erase b ~mangle) (erase c ~mangle)
             | Match (u, l) ->
