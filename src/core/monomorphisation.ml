@@ -741,6 +741,7 @@ let count_clause_arg_map clause_arg_map =
  * takes an integer to limit the numbers of iterations
  * returns an updated list of clauses *)
 let monomorphise_problem clause_list =
+
    begin_time := Sys.time ();
 
    (*Printf.printf "\n so it begins... \n\n";*)
@@ -794,6 +795,14 @@ let monomorphise_problem clause_list =
         only consist in syntactically mangling the arguments that are types\n";
    (*Printf.printf "We begin with %i polymorphic clauses\n" (List.length poly_clause_list);*)
 
+   let print_clause_in =
+      let init_poly_clauses_count = List.length poly_clause_list in
+      let init_mono_clauses_count = List.length clause_list - init_poly_clauses_count in
+      Printf.printf "initial poly clauses: %i\n" init_poly_clauses_count;
+      Printf.printf "initial mono clauses: %i\n" init_mono_clauses_count;
+   in
+   print_clause_in;
+      
    (* monomorphisation loop *)
    let rec monomorphisation_loop curr_count mono_map poly_clause_map subst_map =
       (*Printf.printf "\nbegin loop %f\n" (Sys.time () -. !begin_time);*)
@@ -920,20 +929,16 @@ let monomorphise_problem clause_list =
           acc + SubstMap.fold (fun _ subst_iter acc -> acc + Iter.length subst_iter) subst_map 0) pb_subst_map 0
    in
    (* we want to have; monomorphisation time, number of initial poly and mono clauses, number of output clauses*)
-   let print_debug_info =
+   let print_end_info =
       let new_clause_count = Iter.length new_clauses in
       let all_new_subst = subst_count subst_map_res in
-      let init_poly_clauses_count = List.length poly_clause_list in
-      let init_mono_clauses_count = List.length clause_list - init_poly_clauses_count in
       let mono_time = Sys.time () -. !begin_time in
-         Printf.printf "monomorphisation time: %f\n" mono_time;
-         Printf.printf "initial poly clauses: %i\n" init_poly_clauses_count;
-         Printf.printf "initial mono clauses: %i\n" init_mono_clauses_count;
+         Printf.printf "\nmonomorphisation time: %f\n" mono_time;
          Printf.printf "new clauses: %i\n" new_clause_count;
          Printf.printf "all final substitutions: %i\n" all_new_subst;
    in
 
-   print_debug_info;
+   print_end_info;
    new_clause_list
 
 let rec convert_type ty =

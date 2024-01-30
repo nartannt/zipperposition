@@ -163,7 +163,7 @@ module Make (E : Env.S) : S with module Env = E = struct
   let disable_e () = e_bin := None
 
   let run_e prob_path =
-     Printf.printf "path: %s\n" prob_path;
+     (*Printf.printf "path: %s\n" prob_path;*)
      match !e_bin with
         | Some e_path ->
            let to_ = !_timeout in
