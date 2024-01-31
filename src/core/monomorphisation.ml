@@ -164,7 +164,8 @@ let type_arg_list_subst_merge type_list_poly type_list_mono =
  * returns the numbers of elements to keep*)
 let max_nb len bound =
    let rel_cap = int_of_float (float_of_int len *. bound.relative_bound) in
-      min bound.absolute_cap (max bound.relative_floor rel_cap)
+   if bound.absolute_cap = -1 then rel_cap
+   else min bound.absolute_cap (max bound.relative_floor rel_cap)
 
 (* splits the mixed type_args_iter into its monomorphic and polymorphic components *)
 let split_iter type_args_iter =
@@ -180,7 +181,7 @@ let split_iter type_args_iter =
  * and those from old polymorphic type args and new monomorphic type args *)
 (* TODO NEXT add bounds to limit the number of substitutions we generate 
  * sometimes we generate 100k or 200k substitutions which is ridiculous *)
-let derive_type_arg_subst mono_map poly_map max_new_subst max_old_subst =
+let derive_type_arg_subst mono_map poly_map max_new_subst max_old_subst (old_no_cap, new_no_cap) =
    (*derives the substitutions from two sets (iters) of type arguments*)
    let type_arg_iter_subst mono_type_args_iter poly_type_args_iter =
       let poly_arg_map mono_type_args_iter poly_type_list =
@@ -192,7 +193,7 @@ let derive_type_arg_subst mono_map poly_map max_new_subst max_old_subst =
       let new_poly_subst, old_poly_subst = acc_subst in
       let new_remaining, old_remaining = acc_remaining in
 
-      if new_remaining <= 0 && old_remaining <= 0 then ((new_poly_subst, old_poly_subst), (0, 0))
+      if old_no_cap || new_no_cap || (new_remaining <= 0 && old_remaining <= 0) then ((new_poly_subst, old_poly_subst), (0, 0))
       else
         let old_mono_args, new_mono_args = ArgMap.find fun_sym mono_map in
         (* substitutions derived from the new poly type args *)
@@ -202,11 +203,12 @@ let derive_type_arg_subst mono_map poly_map max_new_subst max_old_subst =
                 (remove_duplicates ~eq:ty_arg_eq (Iter.append old_mono_args new_mono_args))
                 new_poly_args
              (*we can use Iter.take in this way because Iter does stuff lazily*)
-             |> Iter.take new_remaining)
+             |> if not new_no_cap then Iter.take new_remaining else Iter.drop 0)
         in
         (* substitutions dervied from the old poly type args and the new mono type args*)
         let derived_old_poly_subst =
-           Iter.persistent_lazy (type_arg_iter_subst new_mono_args old_poly_args |> Iter.take old_remaining)
+           Iter.persistent_lazy (type_arg_iter_subst new_mono_args old_poly_args |>
+            if not old_no_cap then Iter.take old_remaining else Iter.drop 0)
         in
 
         let new_poly_subst_res =
@@ -480,8 +482,10 @@ let mono_step_clause mono_type_args_map poly_type_args_map susbt_clause_map curr
 
    let max_new_subst = bounds.new_subst_per_clause in
    let max_old_subst = bounds.old_subst_per_clause in
+   let no_cap = max_old_subst = -1, max_new_subst = -1 in
+
    (*generate all substitutions from mono and poly type arguments*)
-   let new_subst_all = derive_type_arg_subst mono_type_args_map poly_type_args_map max_new_subst max_old_subst in
+   let new_subst_all = derive_type_arg_subst mono_type_args_map poly_type_args_map max_new_subst max_old_subst no_cap in
 
    (*Printf.printf "new substitutions: %i\n" (Iter.length new_poly_subst_all + Iter.length old_poly_subst_all);*)
 
@@ -799,7 +803,7 @@ let monomorphise_problem clause_list =
       let init_poly_clauses_count = List.length poly_clause_list in
       let init_mono_clauses_count = List.length clause_list - init_poly_clauses_count in
       Printf.printf "initial poly clauses: %i\n" init_poly_clauses_count;
-      Printf.printf "initial mono clauses: %i\n" init_mono_clauses_count;
+      Printf.printf "initial mono clauses: %i" init_mono_clauses_count;
    in
    print_clause_in;
       
@@ -954,6 +958,18 @@ let rec convert_type ty =
 let () =
    Options.add_opts
      [
+        ("--mono-ty-args", Arg.String (fun s ->
+           match String.split_on_char '-' s with
+            | [cap;mult;floor] ->
+               _mono_ty_args_per_fun_sym := { relative_bound = float_of_string mult; absolute_cap = int_of_string cap; relative_floor = int_of_string floor }
+            | _ -> failwith "invalid mono ty args options"),
+            " parameters for controlling the number of new monomorphic type argument for each function symbol per iteration");
+        ("--poly-ty-args", Arg.String (fun s ->
+           match String.split_on_char '-' s with
+            | [cap;mult;floor] ->
+               _poly_ty_args_per_fun_sym := { relative_bound = float_of_string mult; absolute_cap = int_of_string cap; relative_floor = int_of_string floor }
+            | _ -> failwith "invalid poly ty args options"),
+            " parameters for controlling the number of new polymorphic type argument for each function symbol perclause per iteration");
        ("--mono-loop", Arg.Int (( := ) _loop_count), " number of iterations of the monomorphisation algorithm");
        ( "--ty-var-limit",
          Arg.Int (( := ) _ty_var_limit),
