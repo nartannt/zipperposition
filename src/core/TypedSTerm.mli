@@ -377,7 +377,7 @@ val depth : t -> int
 
 (** {2 Conversion} *)
 
-val erase : t -> ?mangle:bool -> STerm.t
+val erase : t -> mangle:bool -> STerm.t
 
 (** {2 TPTP} *)
 

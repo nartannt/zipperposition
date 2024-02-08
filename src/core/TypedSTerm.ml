@@ -1498,7 +1498,7 @@ let rec mangle_erase ty =
 (* TODO make tests for mangle_erase *)
 let shitty_var_replace str = Str.global_replace (Str.regexp "-") "_" str
 
-let rec erase t ?(mangle = false) =
+let rec erase t ~mangle =
    match ty t with
       | Some ty_res when is_tType ty_res && mangle -> mangle_erase t
       | _ -> (

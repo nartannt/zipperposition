@@ -803,7 +803,7 @@ let monomorphise_problem clause_list =
       let init_poly_clauses_count = List.length poly_clause_list in
       let init_mono_clauses_count = List.length clause_list - init_poly_clauses_count in
       Printf.printf "initial poly clauses: %i\n" init_poly_clauses_count;
-      Printf.printf "initial mono clauses: %i" init_mono_clauses_count;
+      Printf.printf "initial mono clauses: %i\n" init_mono_clauses_count;
    in
    print_clause_in;
       
@@ -959,13 +959,13 @@ let () =
    Options.add_opts
      [
         ("--mono-ty-args", Arg.String (fun s ->
-           match String.split_on_char '-' s with
+           match String.split_on_char ',' s with
             | [cap;mult;floor] ->
                _mono_ty_args_per_fun_sym := { relative_bound = float_of_string mult; absolute_cap = int_of_string cap; relative_floor = int_of_string floor }
             | _ -> failwith "invalid mono ty args options"),
             " parameters for controlling the number of new monomorphic type argument for each function symbol per iteration");
         ("--poly-ty-args", Arg.String (fun s ->
-           match String.split_on_char '-' s with
+           match String.split_on_char ',' s with
             | [cap;mult;floor] ->
                _poly_ty_args_per_fun_sym := { relative_bound = float_of_string mult; absolute_cap = int_of_string cap; relative_floor = int_of_string floor }
             | _ -> failwith "invalid poly ty args options"),

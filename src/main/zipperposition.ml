@@ -12,6 +12,7 @@ let section = Libzipperposition.Const.section
 let phases = Phases_impl.main_cli ~setup_gc:true ()
 
 let () =
+   Printf.printf "begin\n";
    ZProf.setup ();
    match Phases.run phases with
       | CCResult.Error msg ->
