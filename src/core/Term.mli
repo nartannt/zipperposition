@@ -183,6 +183,9 @@ val as_app_mono : t -> t * t list
 val args : t -> t list
 (** [args t = snd (as_app t)] *)
 
+val ty_args: t -> Type.t list
+(** Type arguments of the term *)
+
 val of_term_unsafe : InnerTerm.t -> t
 (** {b NOTE}: this can break the invariants and make {!view} fail. Only
     apply with caution. *)

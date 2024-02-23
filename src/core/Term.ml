@@ -219,6 +219,8 @@ let rec as_fun t =
 
 let head_term t = fst (as_app t)
 let args t = snd (as_app t)
+
+
 let is_app_var t = (is_var @@ head_term t) && List.length @@ args t > 0
 
 let head_term_mono t =
@@ -231,6 +233,13 @@ let head_term_mono t =
          let ty = Type.arrow (List.map ty args) (ty t) in
             app_builtin ~ty b ty_args
       | _ -> t
+
+let ty_args t = 
+   (*function symbol and type arguments*)
+   let instantiated_fun_sym = head_term_mono t in
+   let ty_args = args instantiated_fun_sym in
+   List.map Type.of_term_unsafe ty_args
+
 
 let as_app_mono t =
    match view t with
