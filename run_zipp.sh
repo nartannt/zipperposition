@@ -16,30 +16,30 @@
 # record
 #perf record --call-graph=dwarf -- ./zipperposition.exe --mode best --progress -o none --e-call-point 0.0 --try-e "./eprover-ho" -t 60 ../tptp_benchmarks/poly_problems/...
 
+# ref run 30_-1_2_9_-1_1_6_10_-1_30_3_-1_3_0 ZIPP_TIMEOUT=5 MONO_CAP=-1 MONO_MULT=-1 MONO_FLOOR=1000000
 
-# ref run
-
-#30_-1_2_9_-1_1_6_10_-1_30_3_-1_3_0
-ZIPP_TIMEOUT=30
+ZIPP_TIMEOUT=5
 
 MONO_CAP=-1
-MONO_MULT=6
-MONO_FLOOR=20
+MONO_MULT=-1
+MONO_FLOOR=10000
 
 POLY_CAP=-1
-POLY_MULT=3
-POLY_FLOOR=12
+POLY_MULT=-1
+POLY_FLOOR=10000
 
-MONO_SUBST=20
+MONO_SUBST=5
 SUBST_CAP=-1
 
 
 E_TIMEOUT=30
-CLAUSE_MULT=2
+CLAUSE_MULT=-1
 CLAUSE_CAP=2000
 
+SUBST_ORDERING="age"
+
 LOOP_NB=4
-E_CALL_STEP=20
+E_CALL_STEP=0
 
 
 CS40_OPT=(\
@@ -65,6 +65,7 @@ CS40_OPT=(\
   --poly-ty-args="$POLY_CAP,$POLY_MULT,$POLY_FLOOR" \
   --old-subst-per-clause=$(($SUBST_CAP/2)) --new-subst-per-clause=$(($SUBST_CAP/2))\
   --monomorphising-subst-per-clause=$MONO_SUBST \
+  --substitution-ordering=$SUBST_ORDERING \
   --e-max-derived=$CLAUSE_CAP --new-clauses-multiplier=$CLAUSE_MULT \
   --mono-loop=$LOOP_NB\
   "$1")

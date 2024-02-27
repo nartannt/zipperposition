@@ -297,7 +297,9 @@ module Make (E : Env.S) : S with module Env = E = struct
        in
        (*List.iter (fun cl -> Printf.printf "\noriginal clause: %s" (C.to_string cl)) clause_list;*)
        let simple_clause_list = List.map (fun cl -> (C.id cl, C.lits cl)) clause_list in
+       
        let monomorphised_clauses = Monomorphisation.monomorphise_problem simple_clause_list in
+
 
        (*Printf.printf "EProver intf clause nb %i\n" (List.length monomorphised_clauses);*)
        let monomorphised_iter = Iter.of_list monomorphised_clauses in
