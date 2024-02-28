@@ -499,7 +499,7 @@ let init_single_subst_map literals =
 (* will initialise the maps with the function symbol -> type arguments bindings derived from the clauses *)
 let map_initialisation_step (mono_map, clause_poly_map, pb_subst_map) (clause_id, literals) =
    (* collects all terms into an iter*)
-   let clause_terms_iter = Iter.persistent (Literals.Seq.terms literals) in
+   let clause_terms_iter = Iter.persistent_lazy (Literals.Seq.terms literals) in
 
    (* updates the mono and poly maps with the relevant function symbol -> type argument bindings *)
    let update_maps (curr_mono_map, curr_poly_map) term = add_typed_sym curr_mono_map curr_poly_map term in
@@ -633,10 +633,11 @@ let count_clause_arg_map clause_arg_map =
 let clause_ty_vars lit_arr =
    let var_eq = HVar.equal (fun _ _ -> true) in
    let all_vars =
-      remove_duplicates ~eq:var_eq
-        (Iter.flat_map
-           (fun lit -> Literal.Seq.vars lit )
-           (Iter.of_array lit_arr))
+      Iter.persistent_lazy
+         (remove_duplicates ~eq:var_eq
+           (Iter.flat_map
+              (fun lit -> Literal.Seq.vars lit )
+              (Iter.of_array lit_arr)))
    in
       Iter.filter (fun var -> Type.equal (HVar.ty var) Type.tType) all_vars
 
@@ -724,6 +725,8 @@ let monomorphise_problem_base clause_list =
 
    (* we don't really care about the type arguments, the substitutions are the important part*)
    let _, _, subst_map_res =
+      let init_mono_map =
+         ArgMap.map (fun (_, init_iter) -> (Iter.persistent Iter.empty, Iter.persistent init_iter)) init_mono_map in
       monomorphisation_loop all_bounds.loop_count init_mono_map init_clause_poly_map init_subst_map
    in
 

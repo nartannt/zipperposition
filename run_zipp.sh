@@ -18,7 +18,8 @@
 
 # ref run 30_-1_2_9_-1_1_6_10_-1_30_3_-1_3_0 ZIPP_TIMEOUT=5 MONO_CAP=-1 MONO_MULT=-1 MONO_FLOOR=1000000
 
-ZIPP_TIMEOUT=5
+ZIPP_TIMEOUT=30
+MONO_TO=30
 
 MONO_CAP=-1
 MONO_MULT=-1
@@ -68,6 +69,7 @@ CS40_OPT=(\
   --substitution-ordering=$SUBST_ORDERING \
   --e-max-derived=$CLAUSE_CAP --new-clauses-multiplier=$CLAUSE_MULT \
   --mono-loop=$LOOP_NB\
+  --monomorphisation-timeout=$MONO_TO\
   "$1")
 
 #echo "running with ${CS40_OPT[@]}"
