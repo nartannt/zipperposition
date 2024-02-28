@@ -216,18 +216,18 @@ let print_all_type_args ?(erase_empty = false) fun_sym iter =
 
 (* given a subst map, an iter of substitutions and the current iteration,
    will update the map *)
-let update_susbt_map all_subst map iteration_nb =
+let update_susbt_map new_subst_iter map iteration_nb =
+   let update_map subst = function
+      | None -> Some (Iter.singleton (subst, iteration_nb))
+      | Some iter -> Some (Iter.cons (subst, iteration_nb) iter)
+   in
    let add_single_subst subst_map subst =
-      let update_map subst = function
-         | None -> Some (Iter.singleton (subst, iteration_nb))
-         | Some iter -> Some (Iter.cons (subst, iteration_nb) iter)
-      in
          Iter.fold
            (fun curr_map ty_var -> SubstMap.update (HVar.id ty_var) (update_map subst) curr_map)
            subst_map
            (Iter.map fst (Subst.domain subst))
    in
-   Iter.fold add_single_subst map all_subst
+   Iter.fold add_single_subst map new_subst_iter
 
 (* given a single substitution and polymorphic type argument tuples,
  * will generate at most respectively max_new_mono and max_new_poly 
