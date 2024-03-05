@@ -390,17 +390,27 @@ let apply_subst_map mono_map poly_map new_subst bounds =
 (* given a mono type arg map, a poly type arg map, a subst clause map, the current iteration and bounds
  * will generate new mono and poly ty args within bounds, will also return all substitutions used in 
  * in the process, corresponds to a single monomorphisation step for a given clause *)
-let mono_step_clause mono_type_args_map poly_type_args_map susbt_clause_map curr_iteration bounds =
+let mono_step_clause mono_map poly_map susbt_clause_map curr_iteration bounds =
    (*generate all substitutions from mono and poly type arguments*)
-   let new_subst_all = derive_type_arg_subst mono_type_args_map poly_type_args_map in
+   let new_subst_all = derive_type_arg_subst mono_map poly_map in
 
    (*apply the substitutions to the poly type arguments*)
    (*split them into the new_mono and new_poly type arguments*)
    let new_mono_map_all, new_poly_map_all, used_substs_iter =
-      apply_subst_map mono_type_args_map poly_type_args_map new_subst_all bounds
+      apply_subst_map mono_map poly_map new_subst_all bounds
    in
 
-   (new_mono_map_all, new_poly_map_all, update_susbt_map used_substs_iter susbt_clause_map curr_iteration)
+   (* TODO check if eliminating existing type args from the new ones is worth it*)
+   let remove_existing new_map curr_map =
+      ArgMap.mapi (fun fun_sym new_ty_args -> 
+         let old_iter, new_iter = ArgMap.find fun_sym curr_map in
+         Iter.diff ~eq:ty_arg_eq new_ty_args (Iter.append old_iter new_iter)) new_map
+   in
+
+   let new_mono_map = remove_existing new_mono_map_all mono_map in
+   let new_poly_map = remove_existing new_poly_map_all poly_map in
+
+   (new_mono_map, new_poly_map, update_susbt_map used_substs_iter susbt_clause_map curr_iteration)
 
 (* takes a map from function symbols to iters of monomorphic type arguments
  * takes a map from clause_ids to a map from function symbols to iters of polymorphic type arguments
