@@ -300,7 +300,6 @@ module Make (E : Env.S) : S with module Env = E = struct
        
        let monomorphised_clauses = Monomorphisation.monomorphise_problem simple_clause_list in
 
-
        (*Printf.printf "EProver intf clause nb %i\n" (List.length monomorphised_clauses);*)
        let monomorphised_iter = Iter.of_list monomorphised_clauses in
 

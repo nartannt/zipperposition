@@ -19,17 +19,25 @@
 # ref run 30_-1_2_9_-1_1_6_10_-1_30_3_-1_3_0 ZIPP_TIMEOUT=5 MONO_CAP=-1 MONO_MULT=-1 MONO_FLOOR=1000000
 
 ZIPP_TIMEOUT=30
-MONO_TO=30
+MONO_TO=20
 
-MONO_CAP=-1
-MONO_MULT=-1
-MONO_FLOOR=10000
+SYM_MONO_CAP=50
+SYM_MONO_MULT=1.0
+SYM_MONO_FLOOR=7
 
-POLY_CAP=-1
-POLY_MULT=-1
-POLY_FLOOR=10000
+SYM_POLY_CAP=10
+SYM_POLY_MULT=0.0
+SYM_POLY_FLOOR=1
 
-MONO_SUBST=5
+CLAUSE_MONO_CAP=500
+CLAUSE_MONO_MULT=10000000000
+CLAUSE_MONO_FLOOR=1000
+
+CLAUSE_POLY_CAP=500
+CLAUSE_POLY_MULT=100000000000
+CLAUSE_POLY_FLOOR=1000
+
+MONO_SUBST=2
 SUBST_CAP=-1
 
 
@@ -62,16 +70,17 @@ CS40_OPT=(\
   --sine=50 --sine-tolerance=2 --sine-depth-max=4 --sine-depth-min=1 \
   --e-encode-lambdas=keep --scan-clause-ac=false --lambdasup=0 --kbo-weight-fun=invfreqrank \
   --e-call-step=$E_CALL_STEP --timeout=$ZIPP_TIMEOUT --e-timeout=$E_TIMEOUT\
-  --mono-ty-args="$MONO_CAP,$MONO_MULT,$MONO_FLOOR" \
-  --poly-ty-args="$POLY_CAP,$POLY_MULT,$POLY_FLOOR" \
-  --old-subst-per-clause=$(($SUBST_CAP/2)) --new-subst-per-clause=$(($SUBST_CAP/2))\
+  --sym-mono-ty-args="$SYM_MONO_CAP,$SYM_MONO_MULT,$SYM_MONO_FLOOR" \
+  --sym-poly-ty-args="$SYM_POLY_CAP,$SYM_POLY_MULT,$SYM_POLY_FLOOR" \
+  --clause-mono-ty-args="$CLAUSE_MONO_CAP,$CLAUSE_MONO_MULT,$CLAUSE_MONO_FLOOR" \
+  --clause-poly-ty-args="$CLAUSE_POLY_CAP,$CLAUSE_POLY_MULT,$CLAUSE_POLY_FLOOR" \
   --monomorphising-subst-per-clause=$MONO_SUBST \
   --substitution-ordering=$SUBST_ORDERING \
   --e-max-derived=$CLAUSE_CAP --new-clauses-multiplier=$CLAUSE_MULT \
   --mono-loop=$LOOP_NB\
   --monomorphisation-timeout=$MONO_TO\
-  "$1")
+  )
 
 #echo "running with ${CS40_OPT[@]}"
-./zipperposition.exe ${CS40_OPT[@]}
+find "$1" -name \*.p | xargs --max-args=1 --max-procs=3 ./zipperposition.exe ${CS40_OPT[@]}
 
