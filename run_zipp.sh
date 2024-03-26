@@ -1,22 +1,4 @@
-# with monomorphisation at the beginning
-#./zipperposition.exe --mode best --progress -o none --e-call-step 25 --try-e "./eprover-ho" -t 30 --e-max-derived 100000  -o none --e-timeout 30 ../tptp_benchmarks/TF1/ITP021_3.p
-# only call e after monomorphisation
-#./eprover-ho ...  --pos-ext=all --neg-ext=all --auto-schedule -s
-# without monomorphisation
-#./zipperposition.exe --mode best -o none --progress -t 60 ../tptp_benchmarks/poly_problems/...
 
-#portfolio
-#./portfolio/portfolio.lams.parallel.py "$filename" 30 /tmp/ true
-
-#connection
-#lazio.tcs.ifi.lmu.de -l bozect-rhiwp -p 13522
-# scp command
-#scp -P 13522 bozect-rhiwp@lazio.tcs.ifi.lmu.de:/home/bozect-rhiwp
-
-# record
-#perf record --call-graph=dwarf -- ./zipperposition.exe --mode best --progress -o none --e-call-point 0.0 --try-e "./eprover-ho" -t 60 ../tptp_benchmarks/poly_problems/...
-
-# ref run 30_-1_2_9_-1_1_6_10_-1_30_3_-1_3_0 ZIPP_TIMEOUT=5 MONO_CAP=-1 MONO_MULT=-1 MONO_FLOOR=1000000
 
 ZIPP_TIMEOUT=30
 MONO_TO=20
