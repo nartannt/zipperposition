@@ -840,39 +840,42 @@ let rec convert_type ty =
            | Builtin _ -> ty 
            | _ -> Ty.const (ID.make (Ty.mangle ty))
 
+let try_opt f x =
+   try Some (f x) with _ -> None
+
 let () =
    Options.add_opts
      [
         ("--sym-mono-ty-args", Arg.String (fun s ->
            match String.split_on_char ',' s with
             | [cap;mult;floor] ->
-               _mono_ty_args_per_sym := { relative_bound = Some (float_of_string mult); 
-                                          absolute_cap = Some (int_of_string cap); 
+               _mono_ty_args_per_sym := { relative_bound = try_opt float_of_string mult; 
+                                          absolute_cap = try_opt int_of_string cap; 
                                           relative_floor = int_of_string floor }
             | _ -> failwith "invalid mono ty args options"),
             " parameters for controlling the number of new monomorphic type argument for each symbol per clause per iteration");
         ("--sym-poly-ty-args", Arg.String (fun s ->
            match String.split_on_char ',' s with
             | [cap;mult;floor] ->
-               _poly_ty_args_per_sym := { relative_bound = Some (float_of_string mult); 
-                                          absolute_cap = Some (int_of_string cap); 
+               _poly_ty_args_per_sym := { relative_bound = try_opt float_of_string mult; 
+                                          absolute_cap = try_opt int_of_string cap; 
                                           relative_floor = int_of_string floor }
             | _ -> failwith "invalid poly ty args options"),
             " parameters for controlling the number of new polymorphic type argument for each symbol per clause per iteration");
         ("--clause-mono-ty-args", Arg.String (fun s ->
            match String.split_on_char ',' s with
             | [cap;mult;floor] ->
-               _mono_ty_args_per_clause := { relative_bound = Some (float_of_string mult); 
-                                          absolute_cap = Some (int_of_string cap); 
+               _mono_ty_args_per_clause := { relative_bound = try_opt float_of_string mult; 
+                                          absolute_cap = try_opt int_of_string cap; 
                                           relative_floor = int_of_string floor }
             | _ -> failwith "invalid mono ty args options"),
             " parameters for controlling the number of new monomorphic type argument per clause per iteration");
         ("--clause-poly-ty-args", Arg.String (fun s ->
            match String.split_on_char ',' s with
             | [cap;mult;floor] ->
-               _poly_ty_args_per_clause := { relative_bound = Some (float_of_string mult); 
-                                          absolute_cap = Some (int_of_string cap); 
-                                          relative_floor = int_of_string floor }
+               _poly_ty_args_per_clause := { relative_bound = try_opt float_of_string mult;
+                                             absolute_cap = try_opt int_of_string cap; 
+                                             relative_floor = int_of_string floor }
             | _ -> failwith "invalid poly ty args options"),
             " parameters for controlling the number of new polymorphic type argument per clause per iteration");
        ("--mono-loop", Arg.Int (( := ) _loop_count), " number of iterations of the monomorphisation algorithm");
