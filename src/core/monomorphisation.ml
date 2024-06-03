@@ -171,26 +171,12 @@ let type_arg_list_subst type_list_poly type_list_mono =
  * returns the numbers of elements to keep, if the absolute cap is negative, only the 
  * relative bound is kept, if both are negative, the bounds are ignored *)
 let max_nb len bound =
-   (*let* abs_cap = bound.absolute_cap in
-   let* rel_bound = bound.relative_bound in
-   let rel_cap = int_of_float (float_of_int len *. rel_bound) in
-   ret (min abs_cap (max bound.relative_floor rel_cap))*)
    let rel_cap_opt =
       let+ rel_bound = bound.relative_bound in
-      int_of_float (float_of_int len *. rel_bound)
+      max bound.relative_floor (int_of_float (float_of_int len *. rel_bound))
    in
    raise_opt rel_cap_opt bound.absolute_cap 
-      (fun rel_cap abs_cap -> min abs_cap (max bound.relative_floor rel_cap))
-
-   (*let rel_cap = int_of_float (float_of_int len *. bound.relative_bound) in
-   if bound.absolute_cap <= -1 then 
-      begin
-      (* no bounds are set, very large number TODO (this is a shitty temporary fix)*)
-      if bound.relative_bound <= -1.0 then 10000000000000000
-      else rel_cap
-      end
-   else if bound.relative_bound < 0.0 then bound.absolute_cap
-        else min bound.absolute_cap (max bound.relative_floor rel_cap)*)
+      (fun rel_cap abs_cap -> min abs_cap rel_cap)
 
 
 (* takes a map of function symbols to monomorphic type arguments
@@ -322,7 +308,7 @@ let apply_ty_arg_subst subst poly_ty_args max_new_mono_opt max_new_poly_opt =
 
 (* given a mono and a poly ty arg iter as well as an iter of substitutions and respective mono and poly bounds
  * will return a new mono and a new poly type arg iter within the given bounds *)
-let rec generate_ty_args all_subst poly_ty_args (max_new_mono_opt: int option) (max_new_poly_opt: int option) =
+let rec generate_ty_args all_subst poly_ty_args max_new_mono_opt max_new_poly_opt =
    let bounds_reached = match max_new_mono_opt, max_new_poly_opt with
       | None, None -> false 
       | Some max_new_mono, None -> max_new_mono <= 0
@@ -448,6 +434,7 @@ let apply_subst_map mono_map poly_map new_subst =
 let mono_step_clause mono_map poly_map susbt_clause_map curr_iteration =
    (*generate all substitutions from mono and poly type arguments*)
    let new_subst_all = derive_type_arg_subst mono_map poly_map in
+
 
    (*apply the substitutions to the poly type arguments*)
    (*split them into the new_mono and new_poly type arguments*)
@@ -738,11 +725,19 @@ let instantiate_clause subst_map (clause_id, lit_arr) new_clauses_remaining =
  * returns an updated list of clauses *)
 let monomorphise_problem_base clause_list =
 
+   List.iter (fun (_, cl) -> Printf.printf "clause: %s\n" (Literals.to_string cl)) clause_list;
+
+   List.iter (fun (_, cl) -> Literals.Seq.terms cl (fun term -> (Term.to_string term) ^ " : " ^ (Type.to_string (Term.ty term)) |> Printf.printf "%s\n") ) clause_list;
+
+   (*Printf.printf "list length: %i\n" (List.length clause_list);*)
    (* initialisation *)
    (* create initial maps *)
    let init_mono_map, init_clause_poly_map, init_subst_map =
       List.fold_left map_initialisation_step (ArgMap.empty, ClauseArgMap.empty, PbSubstMap.empty) clause_list
    in
+
+
+   (*Printf.printf "initialisation done at: %f\n" (Sys.time () -. !begin_time );*)
 
    (* all non-monomorphic clauses *)
    let poly_clause_list = List.filter (fun cl -> clause_is_monomorphic cl |> not) clause_list in
@@ -753,8 +748,8 @@ let monomorphise_problem_base clause_list =
    let rec monomorphisation_loop curr_count mono_map poly_clause_map subst_map =
       if curr_count <= 0 then (mono_map, poly_clause_map, subst_map)
       else(
-        let mono_count = count_arg_map mono_map in
-        let poly_count = count_clause_arg_map poly_clause_map in
+        (*let mono_count = count_arg_map mono_map in*)
+        (*let poly_count = count_clause_arg_map poly_clause_map in*)
         (*Printf.printf "mono count: %i, poly count: %i\n" mono_count poly_count;*)
         let new_subst, new_mono_map, new_poly_clause_map =
            mono_step poly_clause_list mono_map poly_clause_map subst_map curr_count in
@@ -763,12 +758,19 @@ let monomorphise_problem_base clause_list =
    (*Printf.printf "initialisation done at: %f\n" (Sys.time () -. !begin_time );*)
 
    (* we don't really care about the type arguments, the substitutions are the important part*)
-   let _, _, subst_map_res =
+   let final_mono, final_non_mono, subst_map_res =
       let init_mono_map =
          ArgMap.map (fun (_, init_iter) -> (Iter.persistent Iter.empty, Iter.persistent init_iter)) init_mono_map in
       monomorphisation_loop !_loop_count init_mono_map init_clause_poly_map init_subst_map
    in
 
+   let print_all_ty_args map =
+      ArgMap.iter (fun fun_sym (old_iter, new_iter) ->
+         print_all_type_args fun_sym (old_iter, new_iter)) map
+   in
+   print_all_ty_args final_mono;
+   Printf.printf "now for the non monomorphic \n";
+   ClauseArgMap.iter (fun clause_id map -> print_all_ty_args map) final_non_mono;
    (*Printf.printf "iterations done at: %f\n" (Sys.time () -. !begin_time );*)
 
 
@@ -793,7 +795,7 @@ let monomorphise_problem_base clause_list =
    let final_clause_list = Iter.to_list new_clauses @ mono_clause_list in
 
    (* we want to have; monomorphisation time, number of initial poly and mono clauses, number of output clauses*)
-   let print_end_info =
+   (*let print_end_info =
       let subst_count pb_subst_map =
          PbSubstMap.fold (fun _ subst_map acc ->
              acc + SubstMap.fold (fun _ subst_iter acc -> acc + Iter.length subst_iter) subst_map 0) pb_subst_map 0
@@ -801,14 +803,16 @@ let monomorphise_problem_base clause_list =
       let new_clause_count = Iter.length new_clauses in
       let all_new_subst = subst_count subst_map_res in
       let mono_time = Sys.time () -. !begin_time in
-         Printf.printf "\nmonomorphisation time: %f\n" mono_time;
+         Printf.printf "monomorphisation time: %f\n" mono_time;
          Printf.printf "new clauses: %i\n" new_clause_count;
          Printf.printf "all final substitutions: %i\n" all_new_subst;
-   in
+   in*)
 
-   print_end_info;
+   (*print_end_info;*)
 
    final_clause_list
+
+let mangle_clause lit_arr = Array.map (Lit.map Term.mangle_term) lit_arr
 
 (* copied (and slightly modified) from https://discuss.ocaml.org/t/todays-trick-memory-limits-with-gc-alarms/4431 *)
 (* lets us run the monomorphisation procedure with a timeout *)
@@ -827,8 +831,17 @@ let run_with_time_limit limit f =
      let _ = Unix.setitimer Unix.ITIMER_REAL Unix.{it_value = 0.; it_interval = 0. } in () )
 
 let monomorphise_problem clause_list =
-   try run_with_time_limit !_monomorphisation_timeout (fun () -> monomorphise_problem_base clause_list)
+   let curr_time = Sys.time () in
+   try run_with_time_limit !_monomorphisation_timeout (fun () -> 
+      let monomorphised_clauses = monomorphise_problem_base clause_list in
+      List.iter (fun (_, cl) -> Literals.Seq.terms cl (fun term -> (Term.to_string term) ^ " : " ^ (Type.to_string (Term.ty term)) |> Printf.printf "%s\n") ) monomorphised_clauses;
+      let res = List.map (fun (id, cl) -> id, mangle_clause cl) (monomorphised_clauses) in
+      (*let res = monomorphise_problem_base clause_list in*)
+      Printf.printf "real monomorphisation time: %f\n" (Sys.time () -. curr_time);
+      res
+   )
    with Out_of_time -> Printf.printf "Monomorphisation timed out\n"; []
+
 
 let rec convert_type ty =
    let open Ty in
@@ -840,8 +853,17 @@ let rec convert_type ty =
            | Builtin _ -> ty 
            | _ -> Ty.const (ID.make (Ty.mangle ty))
 
-let try_opt f x =
-   try Some (f x) with _ -> None
+let float_to_opt str =
+   try 
+      let res = float_of_string str in
+      if res < 0. then None else Some res
+   with _ -> None
+
+let int_to_opt str =
+   try 
+      let res = int_of_string str in
+      if res < 0 then None else Some res
+   with _ -> None
 
 let () =
    Options.add_opts
@@ -849,32 +871,32 @@ let () =
         ("--sym-mono-ty-args", Arg.String (fun s ->
            match String.split_on_char ',' s with
             | [cap;mult;floor] ->
-               _mono_ty_args_per_sym := { relative_bound = try_opt float_of_string mult; 
-                                          absolute_cap = try_opt int_of_string cap; 
+               _mono_ty_args_per_sym := { relative_bound = float_to_opt mult; 
+                                          absolute_cap = int_to_opt cap; 
                                           relative_floor = int_of_string floor }
             | _ -> failwith "invalid mono ty args options"),
             " parameters for controlling the number of new monomorphic type argument for each symbol per clause per iteration");
         ("--sym-poly-ty-args", Arg.String (fun s ->
            match String.split_on_char ',' s with
             | [cap;mult;floor] ->
-               _poly_ty_args_per_sym := { relative_bound = try_opt float_of_string mult; 
-                                          absolute_cap = try_opt int_of_string cap; 
+               _poly_ty_args_per_sym := { relative_bound = float_to_opt mult; 
+                                          absolute_cap = int_to_opt cap; 
                                           relative_floor = int_of_string floor }
             | _ -> failwith "invalid poly ty args options"),
             " parameters for controlling the number of new polymorphic type argument for each symbol per clause per iteration");
         ("--clause-mono-ty-args", Arg.String (fun s ->
            match String.split_on_char ',' s with
             | [cap;mult;floor] ->
-               _mono_ty_args_per_clause := { relative_bound = try_opt float_of_string mult; 
-                                          absolute_cap = try_opt int_of_string cap; 
-                                          relative_floor = int_of_string floor }
+               _mono_ty_args_per_clause := { relative_bound = float_to_opt mult; 
+                                             absolute_cap = int_to_opt cap; 
+                                             relative_floor = int_of_string floor }
             | _ -> failwith "invalid mono ty args options"),
             " parameters for controlling the number of new monomorphic type argument per clause per iteration");
         ("--clause-poly-ty-args", Arg.String (fun s ->
            match String.split_on_char ',' s with
             | [cap;mult;floor] ->
-               _poly_ty_args_per_clause := { relative_bound = try_opt float_of_string mult;
-                                             absolute_cap = try_opt int_of_string cap; 
+               _poly_ty_args_per_clause := { relative_bound = float_to_opt mult;
+                                             absolute_cap = int_to_opt cap; 
                                              relative_floor = int_of_string floor }
             | _ -> failwith "invalid poly ty args options"),
             " parameters for controlling the number of new polymorphic type argument per clause per iteration");

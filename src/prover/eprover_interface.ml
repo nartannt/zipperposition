@@ -147,7 +147,7 @@ module Make (E : Env.S) : S with module Env = E = struct
   let output_all ?(already_defined = ID.Set.empty) ~out cl_set =
      let cl_iter = Iter.of_list cl_set in
      let syms =
-        C.symbols ~include_types:true cl_iter |> (fun syms -> ID.Set.diff syms already_defined) |> ID.Set.to_list
+        C.symbols ~include_types:true cl_iter |> (fun syms -> ID.Set.diff syms already_defined) |> ID.Set.to_list |> List.rev
      in
         CCList.fold_right
           (fun sym _ ->
@@ -163,7 +163,7 @@ module Make (E : Env.S) : S with module Env = E = struct
   let disable_e () = e_bin := None
 
   let run_e prob_path =
-     (*Printf.printf "path: %s\n" prob_path;*)
+     Printf.printf "path: %s\n" prob_path;
      match !e_bin with
         | Some e_path ->
            let to_ = !_timeout in
@@ -250,8 +250,8 @@ module Make (E : Env.S) : S with module Env = E = struct
         (* in fact sorting by proof depth may not make any sense considering that the newly generated clauses are
          * not derived through means in which the notion of proof depth is relevant (as far as i understand) *)
         clauses
-        |> Iter.sort ~cmp:(fun c1 c2 -> CCInt.compare (C.ho_weight c1) (C.ho_weight c2))
-        |> Iter.take !_max_derived
+        (*|> Iter.sort ~cmp:(fun c1 c2 -> CCInt.compare (C.ho_weight c1) (C.ho_weight c2))*)
+        (*|> Iter.take !_max_derived*)
         |> convert_clauses ~converter ~encoded_symbols
      in
 
@@ -270,7 +270,6 @@ module Make (E : Env.S) : S with module Env = E = struct
                       if CCList.is_empty lifted then [ c ] else lifted
        in
 
-       let encoded_symbols, poly_initial = take_initial ~converter () in
 
        (*List.iter (fun cl -> Printf.printf "\nWe have a clause: %s" (C.to_string cl)) ((E.C.ClauseSet.to_list !init_clauses) @ (Iter.to_list poly_active_set) @ (Iter.to_list poly_passive_set));*)
        (*List.iter (fun cl -> Printf.printf "\nWe have a clause: %s" (C.to_string cl)) (poly_initial @ (Iter.to_list poly_active_set) @ (Iter.to_list poly_passive_set));*)
@@ -305,17 +304,14 @@ module Make (E : Env.S) : S with module Env = E = struct
 
        let active_set = Iter.join ~join_row:reconstruct_clause monomorphised_iter poly_active_set in
        let passive_set = Iter.join ~join_row:reconstruct_clause monomorphised_iter poly_passive_set in
-       (*Printf.printf "new passive set counts %i clauses, new active set counts %i clauses\n" (Iter.length active_set) (Iter.length passive_set);*)
-       (*Printf.printf "initial passive set counts %i clauses, initial active set counts %i clauses\n" (Iter.length poly_active_set) (Iter.length poly_passive_set);*)
-       (*no need to apply mangle conversion to initial because we do it later, will need to be cleaned up TODO*)
+
+       let encoded_symbols, poly_initial = take_initial ~converter () in
+
        let initial =
           Iter.to_list (Iter.join ~join_row:reconstruct_clause monomorphised_iter (Iter.of_list poly_initial))
        in
 
-       (*Printf.printf "we currently HAVE THIS %i many passive and active clauses \n" (Iter.length active_set + Iter.length passive_set);*)
 
-       (*Iter.iter (fun cl -> Printf.printf "we have this clause: %s \n" (C.to_string cl)) (Iter.append (Iter.append active_set passive_set) (Iter.of_list initial));*)
-       (*Iter.iter (fun cl -> Printf.printf "\ninitial clauses: %s \n" (C.to_string cl)) (Iter.append (Iter.append poly_active_set poly_passive_set) (Iter.of_list poly_initial));*)
        let _, ho_clauses = take_ho_clauses ~encoded_symbols ~converter (Iter.append active_set passive_set) in
 
        (*Printf.printf "new initital clause nb: %i\n" (List.length poly_initial);*)
@@ -328,15 +324,17 @@ module Make (E : Env.S) : S with module Env = E = struct
 
        (*Printf.printf "ho clause nb: %i\n" (List.length ho_clauses);*)
        (*List.iter (fun cl -> Printf.printf "this clause has taken its toll, wohoh i know she said [Polymorphism Detected] too many times before wohohoh: %s\n" (C.to_string_tstp cl)) ho_clauses;*)
-       let already_defined = output_all ~out initial in
+       let _ = output_all ~out ho_clauses in
           Format.fprintf out "%% -- PASSIVE -- \n";
-          ignore (output_all ~already_defined ~out ho_clauses);
+          (*ignore (output_all ~already_defined ~out ho_clauses);*)
           close_out prob_channel;
           let cl_set = initial @ ho_clauses in
 
           let start_e_time = Sys.time() in
           let res =
-             (*FileUtil.cp [prob_name] FilePath.current_dir;*)
+             FileUtil.cp [prob_name] FilePath.current_dir;
+             Printf.printf "monomorphised problem name %s\n" prob_name;
+             assert false;
              match run_e prob_name with
                 | Some ids ->
                    assert (not (CCList.is_empty ids));

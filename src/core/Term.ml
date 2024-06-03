@@ -381,10 +381,9 @@ module Seq = struct
              | Var _ | DB _ -> ()
              | Fun (ty, u) ->
                 if include_types then Type.Seq.symbols ty k;
-                aux u
+                  aux u
              | App (f, l) ->
-                aux f;
-                List.iter aux l
+                aux f; List.iter aux l
      in
         aux t
 
@@ -622,7 +621,6 @@ let comb_depth t =
       (* CCFormat.printf "c_depth(@[%a@])=@[%a@]@." T.pp t (CCOpt.pp CCInt.pp) res; *)
       res
 
-(* TODO understand how this works / is supposed to be used*)
 let monomorphic t = Iter.is_empty (Seq.ty_vars t)
 let max_var set = VarSet.to_iter set |> Seq.max_var
 let min_var set = VarSet.to_iter set |> Seq.min_var
@@ -1262,25 +1260,75 @@ let rebuild_rec t =
 (*mangle the given type such that it becomes a monomorphic constant*)
 let rec convert_type ty =
    let open Type in
-   let args = Type.expected_args ty in
-   let ret = Type.returns ty in
-      if args != [] then List.map convert_type args ==> convert_type ret
-      else Type.const (ID.make (Type.mangle ty))
+   Printf.printf "type: %s\n" (Type.to_string ty);
+   let args_nb, args, ret = open_poly_fun ty in
+   (*Printf.printf "args_nb: %d\n" args_nb;*)
+   (*let args = Type.expected_args ty in*)
+   (*let ret = Type.returns ty in*)
+   let args = List.filter (fun x -> not (is_tType x)) args in
+   if (List.length args) != 0 then
+      (let res = List.map convert_type args ==> convert_type ret in
+      Printf.printf "res: %s\n" (Type.to_string res);
+      res)
+   else
+      let res = Type.const (ID.make (Type.mangle ty)) in
+      Printf.printf "res: %s\n" (Type.to_string res);
+      res
+
+
 
 (* convert term such that it has mangled types, basically a copy of rebuild_rec
  * if we keep this approach, we will need TODO some refactoring (should be easy) *)
 let mangle_term t =
+   Printf.printf "overall term: %s\n" (to_string t);
    let rec aux env t =
+      Printf.printf "term: %s\n" (to_string t);
       let old_ty = Type.rebuild_rec ~env (ty t) in
-      let ty = convert_type old_ty in
-         Printf.printf "it's all right mate: %s\n" (Type.to_string ty);
+      let new_ty = convert_type old_ty in
+         (*Printf.printf "new type        : %s\n" (Type.to_string new_ty);*)
+         (*Printf.printf "old type rebuilt: %s\n" (Type.to_string old_ty);*)
+         (*Printf.printf "old type        : %s\n" (Type.to_string (ty t));*)
          match view t with
-            | Var v -> var (HVar.cast ~ty v)
-            | DB i -> bvar ~ty i
-            | Const id -> const ~ty id
-            | App (f, l) -> app (aux env f) (List.map (aux env) l)
-            | AppBuiltin (b, l) -> app_builtin ~ty b (List.map (aux env) l)
-            | Fun (ty_arg, bod) ->
+            | Var v -> var (HVar.cast ~ty:new_ty v)
+            | DB i -> bvar ~ty:new_ty i
+            | Const id ->
+               Printf.printf "glglglguuurhglglgl\n";
+               Printf.printf "new const type : %s\n" (Type.to_string new_ty);
+               const ~ty:new_ty id
+            | App (f, l) -> Printf.printf "oooohhhaahooo\n"; 
+               begin
+               let type_args, term_args = List.partition (fun x -> Type.is_tType (ty x)) l in
+               match view f with
+                  | Const f_id ->
+                     (*List.iter (fun x -> Printf.printf "new l type : %s\n" (Type.to_string x)) (List.map Type.of_term_unsafe type_args);*)
+                     let new_type_args = (List.map (fun x -> convert_type (Type.of_term_unsafe x)) type_args) in
+                     let new_f_type = convert_type (Type.apply (ty f) new_type_args) in
+                     Printf.printf "old f type : %s\n" (Type.to_string (ty f));
+                     Printf.printf "new f type : %s\n" (Type.to_string new_f_type);
+                     Printf.printf "f     term : %s\n" (to_string f);
+                     (*Printf.printf "new type after AAARGH: %s\n" (Type.to_string new_type);*)
+                     (*List.iter (fun x -> Printf.printf "new l terms type : %s\n" (Type.to_string (ty x))) (List.map (aux env) l);*)
+                     let new_term_args = List.map (aux env) term_args in
+                     Printf.printf "AAAAAAAAAAAAAARRRRGH\n";
+                     List.iter (fun x -> Printf.printf "new l terms type : %s\n" (Type.to_string (ty x))) new_term_args;
+                     List.iter (fun x -> Printf.printf "new l terms strg : %s\n" (to_string x)) new_term_args;
+                     let new_app_type = T.app ~ty:T.tType (new_f_type:> T.t) ((List.map ty new_term_args):> T.t list) in
+                     T.app ~ty:new_app_type (const ~ty:new_f_type f_id) new_term_args
+                     (*app (const ~ty:new_type f_id) (List.map (aux env) term_args)*)
+                  | _ ->
+                        assert (type_args = []);
+                        let new_f = aux env f in
+                        Printf.printf "WOHOOOO when i getadimeno WOOOHOO when i gadenomeno\n";
+                        let new_l = List.map (aux env) l in
+                        Printf.printf "new_f type : %s\n" (Type.to_string (ty new_f));
+                        (*List.iter (fun x -> Printf.printf "new_l type : %s\n" (Type.to_string (ty x))) new_l;*)
+                        app (aux env f) new_l
+               end
+            | AppBuiltin (b, l) ->
+                  Printf.printf "AppBuiltin DEEZE NUTS\n";
+                  app_builtin ~ty:new_ty b (List.map (aux env) l)
+            | Fun (ty_arg, bod) -> 
+               Printf.printf "FUNction\n";
                let ty_arg = Type.rebuild_rec ~env ty_arg |> Type.unsafe_eval_db env in
                   fun_ ty_arg (aux (ty_arg :: env) bod)
    in
