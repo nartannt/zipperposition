@@ -167,6 +167,7 @@ val fold_terms :
     [eligible] argument *)
 
 val symbols : ?init:ID.Set.t -> ?include_types:bool -> t -> ID.Set.t
+val typed_symbols : ?include_types:bool -> t -> (ID.t * Type.t) Iter.t 
 
 (** {2 IO} *)
 

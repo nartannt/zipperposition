@@ -346,6 +346,9 @@ module Make (Ctx : Ctx.S) : S with module Ctx = Ctx = struct
   let symbols ?(init = ID.Set.empty) ?(include_types = false) seq =
      Iter.fold (fun set c -> Lits.symbols ~include_types ~init:set c.sclause.lits) init seq
 
+  let typed_symbols ?(include_types = false) seq =
+     Iter.flat_map (fun c -> Lits.typed_symbols ~include_types c.sclause.lits) seq
+
   let to_forms c = Lits.Conv.to_forms c.sclause.lits
   let to_sclause c = c.sclause
   let to_s_form c = SClause.to_s_form c.sclause

@@ -43,7 +43,8 @@ module Make (E : Env.S) : S with module Env = E = struct
 
   let ( ==> ) = Type.( ==> )
   let init_clauses = ref C.ClauseSet.empty
-  let initialize () = init_clauses := C.ClauseSet.of_iter (Env.get_passive ())
+  (*let initialize () = init_clauses := C.ClauseSet.of_iter (Env.get_passive ())*)
+  let initialize () = init_clauses := C.ClauseSet.of_iter Iter.empty
 
   exception CantEncode of string
 
@@ -64,6 +65,16 @@ module Make (E : Env.S) : S with module Env = E = struct
            let err = CCFormat.sprintf "%a has non-ground type %a" T.pp t Type.pp (T.ty t) in
               raise @@ CantEncode err);
         match T.view t with
+           (*| T.Const id ->
+                 (match Type.view (T.ty t) with
+                     | App(id, []) ->
+                        Printf.printf "type id: %i, type string: %s\n" (ID.id id) (Type.to_string (T.ty t));
+                        Env.Ctx.declare id (Type.tType)
+                     | _ -> ()
+                  );
+                 Printf.printf "const id: %s, const type: %s\n" (ID.to_string id) (Type.to_string (T.ty t));
+                 Env.Ctx.declare id (T.ty t);
+                 (sym_map, t)*)
            | T.Const _ | T.Var _ | T.DB _ -> (sym_map, t)
            | T.Fun (ty, body) ->
               let sym_map', body' = aux ~sym_map body in
@@ -124,7 +135,9 @@ module Make (E : Env.S) : S with module Env = E = struct
         (encoded_symbols, res)
 
   let output_cl ~out clause =
+     (*Printf.printf "output clause: %s\n" (C.to_string clause);*)
      let lits_converted = Literals.Conv.to_tst (C.lits clause) in
+     (*Printf.printf "output converted lit: %s\n" (TypedSTerm.to_string lits_converted);*)
         (*Printf.printf "converted literals: %s\n" (TypedSTerm.to_string lits_converted);*)
         (*Format.fprintf out "%% %d:\n" (C.proof_depth clause);*)
         (*let orig_cl_str = CCFormat.sprintf "%% @[%a@]@." C.pp_tstp clause in*)
@@ -133,31 +146,40 @@ module Make (E : Env.S) : S with module Env = E = struct
         match C.distance_to_goal clause with
            | Some d when d = 0 ->
               Format.fprintf out "@[thf(zip_cl_%d,negated_conjecture,@[%a@]).@]@\n" (C.id clause)
-                TypedSTerm.TPTP_THF.pp_mangle lits_converted
+                TypedSTerm.TPTP_THF.pp lits_converted
            | _ ->
               Format.fprintf out "@[thf(zip_cl_%d,axiom,@[%a@]).@]@\n" (C.id clause)
-                TypedSTerm.TPTP_THF.pp_mangle lits_converted
+                TypedSTerm.TPTP_THF.pp lits_converted
 
   let output_symdecl ~out sym ty =
      (* distinguished between user defined types and tptp types *)
-     let usr_sym = ID.make (ID.name sym ^ "_u") in
-        Format.fprintf out "@[thf(@['%a_type',type,@[%a@]:@ @[%a@]@]).@]@\n" ID.pp usr_sym ID.pp_tstp usr_sym
-          (Type.TPTP.pp_ho ~depth:0) (Monomorphisation.convert_type ty)
+     (*let usr_sym = ID.make (ID.name sym ^ "_u") in*)
+        Format.fprintf out "@[thf(@['%a_type',type,@[%a@]:@ @[%a@]@]).@]@\n" ID.pp sym ID.pp_tstp sym
+          (Type.TPTP.pp_ho ~depth:0) ty
 
   let output_all ?(already_defined = ID.Set.empty) ~out cl_set =
-     let cl_iter = Iter.of_list cl_set in
-     let syms =
+      let cl_iter = Iter.of_list cl_set in
+      (*let syms =
         C.symbols ~include_types:true cl_iter |> (fun syms -> ID.Set.diff syms already_defined) |> ID.Set.to_list |> List.rev
-     in
-        CCList.fold_right
-          (fun sym _ ->
-            let ty = Ctx.find_signature_exn sym in
-               output_symdecl ~out sym ty)
-          syms ();
+      in*)
+      (*CCList.iter (fun sym -> Printf.printf "symbol: %s\n" (ID.to_string sym)) syms ;*)
+      let typed_syms = C.typed_symbols ~include_types:true cl_iter |> Monomorphisation.remove_duplicates ~eq:(fun p1 p2 -> ID.equal (fst p1) (fst p2)) in
+      let type_syms, term_syms = Monomorphisation.iter_partition (fun (_, ty) -> Type.is_tType ty) typed_syms in
+      (*Iter.iter (fun (id, _) -> Printf.printf "typed symbol: %s\n" (ID.to_string id)) typed_syms;*)
+      Iter.iter (fun (sym, ty) -> output_symdecl ~out sym ty) type_syms;
+      Iter.iter (fun (sym, ty) -> output_symdecl ~out sym ty) term_syms;
+      
+      (*CCList.fold_right
+       (fun sym _ ->
+         let ty = Ctx.find_signature_exn sym in
+         Printf.printf "symbol: %s, type: %s\n" (ID.to_string sym) (Type.to_string ty);
+            output_symdecl ~out sym ty)
+       syms ();*)
 
         Iter.iter (output_cl ~out) cl_iter;
         if ID.Set.is_empty already_defined then output_empty_conj ~out;
-        ID.Set.of_list syms
+        (*ID.Set.of_list syms*)
+        ID.Set.empty
 
   let set_e_bin path = e_bin := Some path
   let disable_e () = e_bin := None
@@ -215,10 +237,12 @@ module Make (E : Env.S) : S with module Env = E = struct
 
      let convert_clauses ~converter ~encoded_symbols iter =
         let converted =
-           Iter.map (fun c -> CCOpt.get_or ~default:c (C.eta_reduce c)) iter |> Iter.flat_map_l converter
+           let res = Iter.map (fun c -> 
+            CCOpt.get_or ~default:c (C.eta_reduce c)) iter |> Iter.flat_map_l converter in
+           res
         in
 
-        (*Iter.iter (fun cl -> Printf.printf "\nBefore conversion: %s" (C.to_string cl)) iter;*)
+        (*Iter.iter (fun cl -> Printf.printf "\nBefore conversion: %s\n" (C.to_string cl)) converted;*)
         let encoded, encoded_symbols =
            Iter.fold
              (fun (acc, encoded_symbols) cl ->
@@ -233,14 +257,14 @@ module Make (E : Env.S) : S with module Env = E = struct
            (encoded_symbols, encoded)
      in
 
-     let take_initial ~converter () =
+     (*let take_initial ~converter () =
         (*Printf.printf "TAKE INITIAL: %i\n" (C.ClauseSet.cardinal !init_clauses);*)
         (*List.iter (fun cl -> Printf.printf "\ninitial clause: %s" (C.to_string cl)) (C.ClauseSet.to_list !init_clauses);*)
         let module CS = C.ClauseSet in
         CS.filter (fun c -> not (lambdas_too_deep c)) !init_clauses
         |> CS.to_iter
         |> convert_clauses ~converter ~encoded_symbols:T.Map.empty
-     in
+     in*)
 
      let take_ho_clauses ~converter ~encoded_symbols clauses =
         (* TODO we ignored proof depth conditions because the clauses we have are the ones generated by the monomorphisation
@@ -305,14 +329,17 @@ module Make (E : Env.S) : S with module Env = E = struct
        let active_set = Iter.join ~join_row:reconstruct_clause monomorphised_iter poly_active_set in
        let passive_set = Iter.join ~join_row:reconstruct_clause monomorphised_iter poly_passive_set in
 
-       let encoded_symbols, poly_initial = take_initial ~converter () in
+       (*let encoded_symbols, poly_initial = take_initial ~converter () in*)
 
-       let initial =
+       (*let initial =
           Iter.to_list (Iter.join ~join_row:reconstruct_clause monomorphised_iter (Iter.of_list poly_initial))
-       in
+       in*)
 
 
-       let _, ho_clauses = take_ho_clauses ~encoded_symbols ~converter (Iter.append active_set passive_set) in
+       let clauses = (Iter.append active_set passive_set) in
+       (*let encoded_symbols, clauses = Iter.fold fold_encode_clauses (T.Map.empty, Iter.empty) clauses in*)
+       let _, ho_clauses = take_ho_clauses  ~encoded_symbols:T.Map.empty ~converter clauses in
+       (*List.iter (fun lit -> Printf.printf "ho_clause lit: %s\n" (C.to_string lit)) ho_clauses;*)
 
        (*Printf.printf "new initital clause nb: %i\n" (List.length poly_initial);*)
        (*Printf.printf "initial initital clause nb: %i\n" (List.length poly_initial);*)
@@ -328,7 +355,7 @@ module Make (E : Env.S) : S with module Env = E = struct
           Format.fprintf out "%% -- PASSIVE -- \n";
           (*ignore (output_all ~already_defined ~out ho_clauses);*)
           close_out prob_channel;
-          let cl_set = initial @ ho_clauses in
+          let cl_set = ho_clauses in
 
           let start_e_time = Sys.time() in
           let res =

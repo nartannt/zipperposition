@@ -67,7 +67,7 @@ let begin_time = ref 0.0
 
 (* it would be really nice if a similar function was a part of the iter library*)
 (* given an 'a Iter and a 'a -> bool function, splits the iter into a pair using the given function *)
-let iter_split filter iter =
+let iter_partition filter iter =
    Iter.fold
      (fun (acc_1, acc_2) elem ->
        if filter elem then (Iter.cons elem acc_1, acc_2) else (acc_1, Iter.cons elem acc_2))
@@ -77,25 +77,12 @@ let iter_split filter iter =
 let remove_duplicates iter ~eq = Iter.map List.hd (Iter.group_by ~eq iter)
 
 (* TODO add this to Type.ml *)
-let rec ty_eq ty ty' =
-   match (Ty.view ty, Ty.view ty') with
-      | Fun (l, ty), Fun (l', ty') ->
-         if List.length l = List.length l' then List.for_all2 ty_eq l l' && ty_eq ty ty' else false
-      | Forall ty, Forall ty' -> ty_eq ty ty'
-      | Var var, Var var' when Ty.is_tType (HVar.ty var) && Ty.is_tType (HVar.ty var') ->
-         HVar.equal (fun _ _ -> true) var var'
-      | Builtin b, Builtin b' -> b = b'
-      | DB i, DB i' -> i = i'
-      | App (f, l), App (f', l') ->
-         if List.length l = List.length l' then
-            ID.equal f f' && List.for_all2 ty_eq l l' else false
-      | _ -> false
 
 (* Iter.union needs to be provided an equality function when dealing with lists of types *)
 (* note that Ty.equal is a physical equality*)
 let ty_arg_eq ty_arg1 ty_arg2 =
    assert (List.length ty_arg1 = List.length ty_arg2);
-   List.for_all2 ty_eq ty_arg1 ty_arg2
+   List.for_all2 Ty.ty_eq ty_arg1 ty_arg2
 
 let lit_is_monomorphic = function
    | Literal.Equation (lt, rt, _) -> T.monomorphic lt && T.monomorphic rt
@@ -258,7 +245,7 @@ let apply_ty_arg_subst subst poly_ty_args max_new_mono_opt max_new_poly_opt =
             (HVar.make ~ty:(Ty.of_term_unsafe ty_var.ty) ty_var.id) ) subst_domain
    in
 
-   let ty_var_eq = HVar.equal ty_eq in
+   let ty_var_eq = HVar.equal Ty.ty_eq in
 
    (* all type variables in a type argument tuple*)
    let ty_vars ty_args =
@@ -276,7 +263,7 @@ let apply_ty_arg_subst subst poly_ty_args max_new_mono_opt max_new_poly_opt =
 
    (*splits the poly type args into mono and poly candidates *)
    let mono_candidates, potential_poly_candidates =
-      iter_split (fun (_, ty_vars) -> Iter.subset ~eq:ty_var_eq ty_vars subst_ty_domain) poly_ty_args_vars_pair
+      iter_partition (fun (_, ty_vars) -> Iter.subset ~eq:ty_var_eq ty_vars subst_ty_domain) poly_ty_args_vars_pair
    in
 
    let poly_candidates =
@@ -586,7 +573,7 @@ let generate_monomorphising_subst subst_map ty_var_iter max_new_subst =
       Iter.map (fun (ty_var: InnerTerm.t HVar.t) -> 
             (HVar.make ~ty:(Ty.of_term_unsafe ty_var.ty) ty_var.id)) (Iter.map fst (Subst.domain subst))
    in
-   let ty_var_eq = HVar.equal ty_eq in
+   let ty_var_eq = HVar.equal Ty.ty_eq in
 
    let remaining_ty_vars ty_var_iter subst =
       Iter.diff ~eq:ty_var_eq ty_var_iter (subst_ty_domain subst)
@@ -725,9 +712,9 @@ let instantiate_clause subst_map (clause_id, lit_arr) new_clauses_remaining =
  * returns an updated list of clauses *)
 let monomorphise_problem_base clause_list =
 
-   List.iter (fun (_, cl) -> Printf.printf "clause: %s\n" (Literals.to_string cl)) clause_list;
+   (*List.iter (fun (_, cl) -> Printf.printf "clause: %s\n" (Literals.to_string cl)) clause_list;*)
 
-   List.iter (fun (_, cl) -> Literals.Seq.terms cl (fun term -> (Term.to_string term) ^ " : " ^ (Type.to_string (Term.ty term)) |> Printf.printf "%s\n") ) clause_list;
+   (*List.iter (fun (_, cl) -> Literals.Seq.terms cl (fun term -> (Term.to_string term) ^ " : " ^ (Type.to_string (Term.ty term)) |> Printf.printf "%s\n") ) clause_list;*)
 
    (*Printf.printf "list length: %i\n" (List.length clause_list);*)
    (* initialisation *)
@@ -764,13 +751,13 @@ let monomorphise_problem_base clause_list =
       monomorphisation_loop !_loop_count init_mono_map init_clause_poly_map init_subst_map
    in
 
-   let print_all_ty_args map =
+   (*let print_all_ty_args map =
       ArgMap.iter (fun fun_sym (old_iter, new_iter) ->
          print_all_type_args fun_sym (old_iter, new_iter)) map
-   in
-   print_all_ty_args final_mono;
-   Printf.printf "now for the non monomorphic \n";
-   ClauseArgMap.iter (fun clause_id map -> print_all_ty_args map) final_non_mono;
+   in*)
+   (*print_all_ty_args final_mono;*)
+   (*Printf.printf "now for the non monomorphic \n";*)
+   (*ClauseArgMap.iter (fun clause_id map -> print_all_ty_args map) final_non_mono;*)
    (*Printf.printf "iterations done at: %f\n" (Sys.time () -. !begin_time );*)
 
 
@@ -812,7 +799,22 @@ let monomorphise_problem_base clause_list =
 
    final_clause_list
 
-let mangle_clause lit_arr = Array.map (Lit.map Term.mangle_term) lit_arr
+let mangle_lit str_ty_list str_term_list lit =
+   let open Lit in
+   match lit with
+      | True -> str_ty_list, str_term_list, mk_tauto
+      | False -> str_ty_list, str_term_list, mk_absurd
+      | Equation (lt, rt, b) ->
+            let str_ty_list, str_term_list, new_lt = Term.mangle_term str_ty_list str_term_list lt in
+            let str_ty_list, str_term_list, new_rt = Term.mangle_term str_ty_list str_term_list rt in
+            str_ty_list, str_term_list, (mk_lit new_lt new_rt b)
+
+let mangle_clause str_ty_list str_term_list clause =
+   let clause_id, lit_arr = clause in
+   let term_list = Array.to_list lit_arr in
+   let str_ty_list, str_term_list, new_term_list = Term.fold_left_map2 mangle_lit str_ty_list str_term_list term_list in
+   let new_clause = (clause_id, Array.of_list new_term_list) in
+   str_ty_list, str_term_list, new_clause
 
 (* copied (and slightly modified) from https://discuss.ocaml.org/t/todays-trick-memory-limits-with-gc-alarms/4431 *)
 (* lets us run the monomorphisation procedure with a timeout *)
@@ -834,8 +836,8 @@ let monomorphise_problem clause_list =
    let curr_time = Sys.time () in
    try run_with_time_limit !_monomorphisation_timeout (fun () -> 
       let monomorphised_clauses = monomorphise_problem_base clause_list in
-      List.iter (fun (_, cl) -> Literals.Seq.terms cl (fun term -> (Term.to_string term) ^ " : " ^ (Type.to_string (Term.ty term)) |> Printf.printf "%s\n") ) monomorphised_clauses;
-      let res = List.map (fun (id, cl) -> id, mangle_clause cl) (monomorphised_clauses) in
+      let _, _, res = Term.fold_left_map2 mangle_clause [] [] monomorphised_clauses in
+   (*List.iter (fun (_, cl) -> Literals.Seq.terms cl (fun term -> (Term.to_string term) ^ " : " ^ (Type.to_string (Term.ty term)) |> Printf.printf "%s\n") ) res;*)
       (*let res = monomorphise_problem_base clause_list in*)
       Printf.printf "real monomorphisation time: %f\n" (Sys.time () -. curr_time);
       res

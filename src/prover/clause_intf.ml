@@ -184,6 +184,9 @@ module type S = sig
   val symbols : ?init:ID.Set.t -> ?include_types:bool -> t Iter.t -> ID.Set.t
   (** symbols that occur in the clause *)
 
+  val typed_symbols : ?include_types:bool -> t Iter.t -> (ID.t * Type.t) Iter.t
+  (** typed symbols that occur in the clause *)
+
   val to_sclause : t -> SClause.t
 
   val to_forms : t -> Term.t SLiteral.t list

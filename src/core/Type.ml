@@ -202,6 +202,21 @@ let () =
 let err_apply_ msg = raise (ApplyError msg)
 let err_applyf_ msg = CCFormat.ksprintf msg ~f:err_apply_
 
+let rec ty_eq ty ty' =
+   match (view ty, view ty') with
+      | Fun (l, ty), Fun (l', ty') ->
+         if List.length l = List.length l' then List.for_all2 ty_eq l l' && ty_eq ty ty' else false
+      | Forall ty, Forall ty' -> ty_eq ty ty'
+      | Var var, Var var' when is_tType (HVar.ty var) && is_tType (HVar.ty var') ->
+         HVar.equal (fun _ _ -> true) var var'
+      | Builtin b, Builtin b' -> b = b'
+      | DB i, DB i' -> i = i'
+      | App (f, l), App (f', l') ->
+         if List.length l = List.length l' then
+            ID.equal f f' && List.for_all2 ty_eq l l'
+         else false
+      | _ -> false
+
 (* apply a type to arguments. *)
 let apply ty0 args0 =
    let rec aux ty args env =

@@ -377,7 +377,7 @@ val depth : t -> int
 
 (** {2 Conversion} *)
 
-val erase : t -> mangle:bool -> STerm.t
+val erase : t -> STerm.t
 
 (** {2 TPTP} *)
 
@@ -387,8 +387,6 @@ end
 
 module TPTP_THF : sig
   include Interfaces.PRINT with type t := t
-
-  val pp_mangle : t CCFormat.printer
 end
 
 module ZF : sig

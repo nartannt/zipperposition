@@ -259,7 +259,7 @@ module Make (E : Env.S) = struct
                 let res_opt =
                    if should_try_e num timeout then
                       begin
-                      Printf.printf "\nfinised initial zipp: %f\n" (Util.total_time_s ());
+                      (*Printf.printf "\nfinished initial zipp: %f\n" (Util.total_time_s ());*)
                       EInterface.try_e (Env.get_active ()) (Env.get_passive ())
                       end
                    else None

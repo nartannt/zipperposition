@@ -218,8 +218,6 @@ module Conv = struct
         in
         let disjuncts =
            match or_args with
-              (* TODO the line below used to be assert false, check with someone that knows what they're doing
-               * that the replacement does indeed make sense, i believe it is correct (an empty disjunction is false) *)
               | [] -> TypedSTerm.app_builtin ~ty Builtin.false_ []
               | [ disj ] -> disj
               | _ -> TypedSTerm.app_builtin ~ty Builtin.or_ or_args
@@ -313,6 +311,8 @@ let fold_terms ?(vars = false) ?(var_args = true) ?(fun_bodies = true) ?ty_args 
 let symbols ?(init = ID.Set.empty) ?(include_types = false) lits =
    Iter.of_array lits |> Iter.flat_map (Lit.Seq.symbols ~include_types) |> ID.Set.add_iter init
 
+let typed_symbols ?(include_types = false) lits =
+   Iter.of_array lits |> Iter.flat_map (Lit.Seq.typed_symbols ~include_types)
 (** {3 IO} *)
 
 let pp_gen ~false_ ~l ~r ~sep ~pp_lit out lits =

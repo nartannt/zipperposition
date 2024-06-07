@@ -1485,60 +1485,44 @@ let simplify_formula t =
 
 (** {2 Conversion} *)
 
-let rec mangle_erase ty =
-   let open Ty in
-   let ty_vars, args, ret = unfold ty in
-      if ty_vars != [] then (
-        Printf.printf "Polymorphism detected\n";
-        assert false);
-      if args = [] then mangle_except_builtin ret
-      else STerm.app_builtin Builtin.arrow (mangle_erase ret :: List.map mangle_erase args)
-
-(* TODO make mangle not an optional argument*)
-(* TODO make tests for mangle_erase *)
-let shitty_var_replace str = Str.global_replace (Str.regexp "-") "_" str
-
-let rec erase t ~mangle =
-   match ty t with
-      | Some ty_res when is_tType ty_res && mangle -> mangle_erase t
-      | _ -> (
-         match view t with
-            | Var v -> STerm.var (Var.to_string v)
-            | Const s -> STerm.const (ID.to_string s ^ "_u")
-            | App (f, l) -> STerm.app (erase f ~mangle) (List.map (erase ~mangle) l)
-            | Bind (b, v, t) ->
-               STerm.bind b [ (STerm.V (Var.to_string v), Some (erase (Var.ty v) ~mangle)) ] (erase t ~mangle)
-            | AppBuiltin (b, l) -> STerm.app_builtin b (List.map (erase ~mangle) l)
-            | Ite (a, b, c) -> STerm.ite (erase a ~mangle) (erase b ~mangle) (erase c ~mangle)
-            | Match (u, l) ->
-               let u = erase u ~mangle in
-               let l =
-                  List.map
-                    (fun (c, vars, rhs) ->
-                      (* type arguments of [c] are ignored as being implicit *)
-                      let c = ID.to_string c.cstor_id ^ "_u" in
-                      let vars = List.map (fun v -> STerm.V (Var.to_string v)) vars in
-                      let rhs = erase rhs ~mangle in
-                         STerm.Match_case (c, vars, rhs))
-                    l
-               in
-                  STerm.match_ u l
-            | Multiset l -> STerm.list_ (List.map (erase ~mangle) l)
-            | Let (l, u) ->
-               let l = List.map (fun (v, t) -> (STerm.V (Var.to_string v), erase t ~mangle)) l in
-               let u = erase u ~mangle in
-                  STerm.let_ l u
-            | Record (l, rest) ->
-               let rest =
-                  CCOpt.map
-                    (fun t ->
-                      match view t with
-                         | Var v -> STerm.V (Var.to_string v)
-                         | _ -> failwith "cannot erase non-variable record raw")
-                    rest
-               in
-                  STerm.record (List.map (fun (n, t) -> (n, erase t ~mangle)) l) ~rest
-            | Meta _ -> failwith "cannot erase meta")
+let rec erase t =
+      match view t with
+         | Var v -> STerm.var (Var.to_string v)
+         | Const s -> STerm.const (ID.to_string s)
+         | App (f, l) -> STerm.app (erase f) (List.map erase l)
+         | Bind (b, v, t) ->
+            STerm.bind b [ (STerm.V (Var.to_string v), Some (erase (Var.ty v))) ] (erase t)
+         | AppBuiltin (b, l) -> STerm.app_builtin b (List.map erase l)
+         | Ite (a, b, c) -> STerm.ite (erase a) (erase b) (erase c)
+         | Match (u, l) ->
+            let u = erase u in
+            let l =
+               List.map
+                 (fun (c, vars, rhs) ->
+                   (* type arguments of [c] are ignored as being implicit *)
+                   let c = ID.to_string c.cstor_id ^ "_u" in
+                   let vars = List.map (fun v -> STerm.V (Var.to_string v)) vars in
+                   let rhs = erase rhs in
+                      STerm.Match_case (c, vars, rhs))
+                 l
+            in
+               STerm.match_ u l
+         | Multiset l -> STerm.list_ (List.map erase l)
+         | Let (l, u) ->
+            let l = List.map (fun (v, t) -> (STerm.V (Var.to_string v), erase t)) l in
+            let u = erase u in
+               STerm.let_ l u
+         | Record (l, rest) ->
+            let rest =
+               CCOpt.map
+                 (fun t ->
+                   match view t with
+                      | Var v -> STerm.V (Var.to_string v)
+                      | _ -> failwith "cannot erase non-variable record raw")
+                 rest
+            in
+               STerm.record (List.map (fun (n, t) -> (n, erase t)) l) ~rest
+         | Meta _ -> failwith "cannot erase meta"
 
 let rec depth t =
    match view t with
@@ -1553,20 +1537,19 @@ let rec depth t =
 and depth_l l = 1 + List.fold_left (fun acc t -> max acc (depth t)) 0 l
 
 module TPTP = struct
-  let pp out t = STerm.TPTP.pp out (erase t ~mangle:false)
-  let to_string t = STerm.TPTP.to_string (erase t ~mangle:false)
+  let pp out t = STerm.TPTP.pp out (erase t)
+  let to_string t = STerm.TPTP.to_string (erase t)
 end
 
 module TPTP_THF = struct
-  let pp out t = STerm.TPTP_THF.pp out (erase t ~mangle:false)
-  let pp_mangle out t = STerm.TPTP_THF.pp out (erase t ~mangle:true)
-  let to_string t = STerm.TPTP_THF.to_string (erase t ~mangle:false)
+  let pp out t = STerm.TPTP_THF.pp out (erase t)
+  let to_string t = STerm.TPTP_THF.to_string (erase t)
 end
 
 module ZF = struct
-  let pp out t = STerm.ZF.pp out (erase t ~mangle:false)
-  let pp_inner out t = STerm.ZF.pp_inner out (erase t ~mangle:false)
-  let to_string t = STerm.ZF.to_string (erase t ~mangle:false)
+  let pp out t = STerm.ZF.pp out (erase t)
+  let pp_inner out t = STerm.ZF.pp_inner out (erase t)
+  let to_string t = STerm.ZF.to_string (erase t)
 end
 
 let pp_in = function
