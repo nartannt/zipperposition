@@ -177,7 +177,7 @@ module Make (E : Env.S) : S with module Env = E = struct
        syms ();*)
 
         Iter.iter (output_cl ~out) cl_iter;
-        if ID.Set.is_empty already_defined then output_empty_conj ~out;
+        (*if ID.Set.is_empty already_defined then output_empty_conj ~out;*)
         (*ID.Set.of_list syms*)
         ID.Set.empty
 
@@ -227,7 +227,7 @@ module Make (E : Env.S) : S with module Env = E = struct
   module ArgMap = Monomorphisation.ArgMap
 
   let try_e poly_active_set poly_passive_set =
-     let lambdas_too_deep c =
+     let _lambdas_too_deep c =
         let lambda_limit = 6 in
            C.Seq.terms c
            |> Iter.map (fun t -> CCOpt.get_or ~default:0 (Term.lambda_depth t))
@@ -338,7 +338,8 @@ module Make (E : Env.S) : S with module Env = E = struct
 
        let clauses = (Iter.append active_set passive_set) in
        (*let encoded_symbols, clauses = Iter.fold fold_encode_clauses (T.Map.empty, Iter.empty) clauses in*)
-       let _, ho_clauses = take_ho_clauses  ~encoded_symbols:T.Map.empty ~converter clauses in
+       (*let _, ho_clauses = take_ho_clauses  ~encoded_symbols:T.Map.empty ~converter clauses in*)
+       let ho_clauses = Iter.to_list clauses in
        (*List.iter (fun lit -> Printf.printf "ho_clause lit: %s\n" (C.to_string lit)) ho_clauses;*)
 
        (*Printf.printf "new initital clause nb: %i\n" (List.length poly_initial);*)
@@ -352,7 +353,7 @@ module Make (E : Env.S) : S with module Env = E = struct
        (*Printf.printf "ho clause nb: %i\n" (List.length ho_clauses);*)
        (*List.iter (fun cl -> Printf.printf "this clause has taken its toll, wohoh i know she said [Polymorphism Detected] too many times before wohohoh: %s\n" (C.to_string_tstp cl)) ho_clauses;*)
        let _ = output_all ~out ho_clauses in
-          Format.fprintf out "%% -- PASSIVE -- \n";
+          (*Format.fprintf out "%% -- PASSIVE -- \n";*)
           (*ignore (output_all ~already_defined ~out ho_clauses);*)
           close_out prob_channel;
           let cl_set = ho_clauses in

@@ -404,8 +404,8 @@ let mangle (ty : t) : string =
           * problems distinguishing between types like ex_1 ex__1, however removing "_" prevents errors for types
           * like `to_int: $tType > $tType` because otherwise (int to_int) list would conflict with int > int list*)
          (* TODO removing the "_" filter as a temporary measure*)
-         (*|> CCString.filter (function '#' | '_' -> false | _ -> true)*)
-         |> CCString.filter (function '#' -> false | _ -> true)
+         |> CCString.filter (function '#' | '_' -> false | _ -> true)
+         (*|> CCString.filter (function '#' -> false | _ -> true)*)
       in
          Buffer.add_string buf s;
          Buffer.add_string buf "_u"

@@ -61,13 +61,14 @@ let payload_pred ~f:p t =
 let hash t = t.id
 let equal i1 i2 = i1.id = i2.id
 let compare i1 i2 = CCShims_.Stdlib.compare i1.id i2.id
-let pp out id = CCFormat.string out id.name
+let pp out id = CCFormat.string out (id.name ^ "_" ^ string_of_int id.id)
 let to_string = CCFormat.to_string pp
 let pp_full out id = Format.fprintf out "%s/%d" id.name id.id
 let pp_fullc = pp_full
 
 let pp_tstp out id =
-   if Util.tstp_needs_escaping id.name then CCFormat.fprintf out "'%s'" id.name else CCFormat.string out id.name
+   let name_and_id = id.name ^ "_" ^ string_of_int id.id in
+   if Util.tstp_needs_escaping name_and_id then CCFormat.fprintf out "'%s'" name_and_id else CCFormat.string out name_and_id
 
 let pp_zf = pp_tstp
 

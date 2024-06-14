@@ -499,6 +499,6 @@ end
 val rebuild_rec : t -> t (* rebuild term fully, checking types *)
 
 val fold_left_map2: ('acc1 -> 'acc2 -> 'a -> 'acc1 * 'acc2 * 'b) -> 'acc1 -> 'acc2 -> 'a list -> 'acc1 * 'acc2 * 'b list
-val mangle_term : (string * Type.t) list -> (string * t) list -> t -> (string * Type.t) list  * (string * t) list * t
+val mangle_term : (Type.t * Type.t) list -> ((ID.t * Type.t) * t) list -> t -> (Type.t * Type.t) list * ((ID.t * Type.t) * t) list * t
 
 (**/**)

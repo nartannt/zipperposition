@@ -2,7 +2,7 @@
 
 (** {1 Input Format} *)
 
-let shadow_mode = ref (None : bool option)
+let shadow_mode = ref (Some false : bool option)
 
 type t = I_tptp | I_zf | I_tip | I_dk
 
