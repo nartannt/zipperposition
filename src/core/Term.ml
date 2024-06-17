@@ -1301,10 +1301,7 @@ let fold_left_map2 f acc_1 acc_2 l =
 (* convert term such that it has mangled types, basically a copy of rebuild_rec
  * if we keep this approach, we will need TODO some refactoring (should be easy) *)
 let mangle_term ty_list str_term_list t =
-   (*Printf.printf "overall term: %s\n" (to_string t);*)
    let rec aux env ty_list str_term_list t =
-      (*Printf.printf "term: %s\n" (to_string t);*)
-      (*let old_ty = Type.rebuild_rec ~env (ty t) in*)
       let ty_list, new_ty = convert_type ty_list (ty t) in
          (*Printf.printf "overall term: %s\n" (T.to_string (t:>term));*)
          (*Printf.printf "new type        : %s\n" (Type.to_string new_ty);*)
