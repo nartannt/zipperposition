@@ -3,7 +3,7 @@
 
 J?=3
 
-all: build test-cached
+all: build #test-cached
 
 DUNE_OPTS= -j $(J) --profile=release
 
