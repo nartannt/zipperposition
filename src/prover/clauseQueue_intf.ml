@@ -1,17 +1,17 @@
 (* This file is free software, part of Zipperposition. See file "license" for more details. *)
 
 type profile =
-   | P_default
-   | P_bfs
-   | P_almost_bfs
-   | P_explore
-   | P_ground
-   | P_goal
-   | P_conj_rel
-   | P_conj_rel_var
-   | P_ho_weight
-   | P_ho_weight_init
-   | P_avoid_expensive
+  | P_default
+  | P_bfs
+  | P_almost_bfs
+  | P_explore
+  | P_ground
+  | P_goal
+  | P_conj_rel
+  | P_conj_rel_var
+  | P_ho_weight
+  | P_ho_weight_init
+  | P_avoid_expensive
 
 (** {1 A priority queue of clauses, purely functional} *)
 module type S = sig
@@ -25,12 +25,11 @@ module type S = sig
   (** {6 Weight functions} *)
   module WeightFun : sig
     type t = C.t -> int
-    (** attribute a weight to a clause. The smaller, the better (lightweight
-        clauses will be favored). A weight must always be positive;
-        the weight of the empty clause should alwyays be 0. *)
+    (** attribute a weight to a clause. The smaller, the better (lightweight clauses will be favored). A weight
+        must always be positive; the weight of the empty clause should alwyays be 0. *)
 
     val of_string : string -> t
-    (** parse string description of weight function and return it  *)
+    (** parse string description of weight function and return it *)
 
     val default : t
     (** Use {!Literal.heuristic_weight} *)
@@ -48,30 +47,29 @@ module type S = sig
     val favor_horn : t
 
     val favor_goal : t
-    (** The closest a clause is from the initial goal, the lowest its weight.
-        Some threshold is used for clauses that are too far away *)
+    (** The closest a clause is from the initial goal, the lowest its weight. Some threshold is used for clauses
+        that are too far away *)
 
     val conj_relative :
       ?distinct_vars_mul:float -> ?parameters_magnitude:[< `Large | `Small > `Large ] -> ?goal_penalty:bool -> t
 
     val combine : (t * int) list -> t
-    (** Combine a list of pairs [w, coeff] where [w] is a weight function,
-        and [coeff] a strictly positive number. This is a weighted sum
-        of weights. *)
+    (** Combine a list of pairs [w, coeff] where [w] is a weight function, and [coeff] a strictly positive
+        number. This is a weighted sum of weights. *)
   end
 
   module PriorityFun : sig
     type t = C.t -> int
 
     val of_string : string -> t
-    (** parse string description of weight function and return it  *)
+    (** parse string description of weight function and return it *)
   end
 
   type t
   (** A priority queue. *)
 
   val add : t -> C.t -> bool
-  (** Add a clause to the Queue; returns true if clause was actually added  *)
+  (** Add a clause to the Queue; returns true if clause was actually added *)
 
   val add_seq : t -> C.t Iter.t -> unit
   (** Add clauses to the queue *)
@@ -110,8 +108,7 @@ module type S = sig
   (** Favor positive unit clauses and ground clauses *)
 
   val goal_oriented : unit -> t
-  (** custom weight function that favors clauses that are "close" to
-      initial conjectures. It is fair.  *)
+  (** custom weight function that favors clauses that are "close" to initial conjectures. It is fair. *)
 
   val default : unit -> t
   (** Obtain the default queue *)
@@ -126,9 +123,8 @@ module type S = sig
   (** is the clause present in the passive set? *)
 
   val remove : t -> C.t -> bool
-  (** ignore the clause in the queue, and make sure it is never 
-      returned with the call to take_first();
-      returns true if clause was actually removed *)
+  (** ignore the clause in the queue, and make sure it is never returned with the call to take_first(); returns
+      true if clause was actually removed *)
 
   (** {5 IO} *)
 

@@ -2,30 +2,25 @@
 
 (** {1 Unique Identifiers} *)
 
-(** An {!ID.t} is a unique identifier (an integer) with a human-readable name.
-    We use those to give names to variables that are not hashconsed (the hashconsing
-    does not play nice with names).
+(** An {!ID.t} is a unique identifier (an integer) with a human-readable name. We use those to give names to
+    variables that are not hashconsed (the hashconsing does not play nice with names).
 
-    An identifier is primarily determined by its [id] (a unique number for
-    this identifier), and contains a string name for readability.
-    Sometimes we display identifiers as "name/id".
+    An identifier is primarily determined by its [id] (a unique number for this identifier), and contains a
+    string name for readability. Sometimes we display identifiers as "name/id".
 
-    Identifiers are {b generative}: you can easily create new ones
-    or copy them.
+    Identifiers are {b generative}: you can easily create new ones or copy them.
 
-    Identifiers can carry some {b payload} (values, of type {!exn} because
-    it's extensible). It is useful to remember easily some
-    information about the identifier (e.g. special sugar notation,
-    whether it's a skolem, etc.)
+    Identifiers can carry some {b payload} (values, of type {!exn} because it's extensible). It is useful to
+    remember easily some information about the identifier (e.g. special sugar notation, whether it's a skolem,
+    etc.)
 
-    @since 1.5
-*)
+    @since 1.5 *)
 
 type t = private {
-   id : int;
-   name : string;
-   mutable payload : exn list;  (** Use [exn] as an open type for user-defined payload *)
- }
+  id: int;
+  name: string;
+  mutable payload: exn list;  (** Use [exn] as an open type for user-defined payload *)
+}
 
 val make : string -> t
 (** Makes a fresh ID *)
@@ -44,8 +39,8 @@ val payload_pred : f:(exn -> bool) -> t -> bool
 
 val set_payload : ?can_erase:(exn -> bool) -> t -> exn -> unit
 (** Set given exception as payload.
-    @param can_erase if provided, checks whether an existing value
-      is to be replaced instead of adding a new entry *)
+    @param can_erase
+      if provided, checks whether an existing value is to be replaced instead of adding a new entry *)
 
 include Interfaces.HASH with type t := t
 include Interfaces.ORD with type t := t
@@ -57,8 +52,7 @@ val pp_full : t CCFormat.printer
 (** Prints the ID with its internal number *)
 
 val pp_fullc : t CCFormat.printer
-(** Prints the ID with its internal number colored in gray (better for
-    readability). Only use for debugging. *)
+(** Prints the ID with its internal number colored in gray (better for readability). Only use for debugging. *)
 
 val pp_tstp : t CCFormat.printer
 val pp_zf : t CCFormat.printer
@@ -79,7 +73,11 @@ exception Attr_prefix of string
 exception Attr_parameter of int
 (** Parameter, used for HO unif *)
 
-type skolem_kind = K_normal | K_after_cnf | K_lazy_cnf | K_ind (* inductive *)
+type skolem_kind =
+  | K_normal
+  | K_after_cnf
+  | K_lazy_cnf
+  | K_ind (* inductive *)
 
 exception Attr_skolem of skolem_kind
 exception Attr_distinct

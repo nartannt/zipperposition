@@ -2,61 +2,69 @@
 
 (** {1 Statement} *)
 
-(** The input problem is made of {b statements}. Each statement can declare
-    a type, assert a formula, or a conjecture, define a term, add
-    a rewrite rule, etc.
+(** The input problem is made of {b statements}. Each statement can declare a type, assert a formula, or a
+    conjecture, define a term, add a rewrite rule, etc.
 
-    Those statements do not necessarily reflect exactly statements in the input
-    language(s) (e.g., TPTP).
-*)
+    Those statements do not necessarily reflect exactly statements in the input language(s) (e.g., TPTP). *)
 
 type 'ty data = {
-   data_id : ID.t;  (** Name of the type *)
-   data_args : 'ty Var.t list;  (** type parameters *)
-   data_ty : 'ty;  (** type of Id, that is,   [type -> type -> ... -> type] *)
-   data_cstors : (ID.t * 'ty * ('ty * (ID.t * 'ty)) list) list;
-       (** Each constructor is [id, ty, args].
-      [ty] must be of the form [ty1 -> ty2 -> ... -> id args].
-      [args] has the form [(ty1, p1), (ty2,p2), …] where each [p]
-      is a projector. *)
- }
+  data_id: ID.t;  (** Name of the type *)
+  data_args: 'ty Var.t list;  (** type parameters *)
+  data_ty: 'ty;  (** type of Id, that is, [type -> type -> ... -> type] *)
+  data_cstors: (ID.t * 'ty * ('ty * (ID.t * 'ty)) list) list;
+      (** Each constructor is [id, ty, args]. [ty] must be of the form [ty1 -> ty2 -> ... -> id args]. [args] has
+          the form [(ty1, p1), (ty2,p2), …] where each [p] is a projector. *)
+}
 (** A datatype declaration *)
 
-type attr = A_AC | A_infix of string | A_prefix of string | A_sos  (** set of support *)
+type attr =
+  | A_AC
+  | A_infix of string
+  | A_prefix of string
+  | A_sos  (** set of support *)
+
 type attrs = attr list
 type 'ty skolem = ID.t * 'ty
 
-type polarity = [ `Equiv | `Imply ]
+type polarity =
+  [ `Equiv
+  | `Imply
+  ]
 (** polarity for rewrite rules *)
 
 type ('f, 't, 'ty) def_rule =
-   | Def_term of { vars : 'ty Var.t list; id : ID.t; ty : 'ty; args : 't list; rhs : 't; as_form : 'f }
-       (** [forall vars, id args = rhs] *)
-   | Def_form of {
-       vars : 'ty Var.t list;
-       lhs : 't SLiteral.t;
-       rhs : 'f list;
-       polarity : polarity;
-       as_form : 'f list;
-     }  (** [forall vars, lhs op bigand rhs] where [op] depends on
-          [polarity] (in [{=>, <=>, <=}]) *)
+  | Def_term of {
+      vars: 'ty Var.t list;
+      id: ID.t;
+      ty: 'ty;
+      args: 't list;
+      rhs: 't;
+      as_form: 'f;
+    }  (** [forall vars, id args = rhs] *)
+  | Def_form of {
+      vars: 'ty Var.t list;
+      lhs: 't SLiteral.t;
+      rhs: 'f list;
+      polarity: polarity;
+      as_form: 'f list;
+    }  (** [forall vars, lhs op bigand rhs] where [op] depends on [polarity] (in [{=>, <=>, <=}]) *)
 
 type ('f, 't, 'ty) def = {
-   def_id : ID.t;
-   def_ty : 'ty; (* def_ty = def_vars -> def_ty_ret *)
-   def_rules : ('f, 't, 'ty) def_rule list;
-   def_rewrite : bool; (* rewrite rule or mere assertion? *)
- }
+  def_id: ID.t;
+  def_ty: 'ty; (* def_ty = def_vars -> def_ty_ret *)
+  def_rules: ('f, 't, 'ty) def_rule list;
+  def_rewrite: bool; (* rewrite rule or mere assertion? *)
+}
 
 type ('f, 't, 'ty) view =
-   | TyDecl of ID.t * 'ty  (** id: ty *)
-   | Data of 'ty data list
-   | Def of ('f, 't, 'ty) def list
-   | Rewrite of ('f, 't, 'ty) def_rule
-   | Assert of 'f  (** assert form *)
-   | Lemma of 'f list  (** lemma to prove and use, using Avatar cut *)
-   | Goal of 'f  (** goal to prove *)
-   | NegatedGoal of 'ty skolem list * 'f list  (** goal after negation, with skolems *)
+  | TyDecl of ID.t * 'ty  (** id: ty *)
+  | Data of 'ty data list
+  | Def of ('f, 't, 'ty) def list
+  | Rewrite of ('f, 't, 'ty) def_rule
+  | Assert of 'f  (** assert form *)
+  | Lemma of 'f list  (** lemma to prove and use, using Avatar cut *)
+  | Goal of 'f  (** goal to prove *)
+  | NegatedGoal of 'ty skolem list * 'f list  (** goal after negation, with skolems *)
 
 type lit = Term.t SLiteral.t
 type formula = TypedSTerm.t
@@ -64,12 +72,12 @@ type input_def = (TypedSTerm.t, TypedSTerm.t, TypedSTerm.t) def
 type clause = lit list
 
 type ('f, 't, 'ty) t = private {
-   id : int;
-   view : ('f, 't, 'ty) view;
-   attrs : attrs;
-   proof : proof;
-   mutable name : string option;
- }
+  id: int;
+  view: ('f, 't, 'ty) view;
+  attrs: attrs;
+  proof: proof;
+  mutable name: string option;
+}
 
 and proof = Proof.Step.t
 and input_t = (TypedSTerm.t, TypedSTerm.t, TypedSTerm.t) t
@@ -122,16 +130,15 @@ val map : form:('f1 -> 'f2) -> term:('t1 -> 't2) -> ty:('ty1 -> 'ty2) -> ('f1, '
 type definition = Rewrite.rule_set
 
 val as_defined_cst : ID.t -> (int * definition) option
-(** [as_defined_cst id] returns [Some level] if [id] is a constant
-    defined at stratification level [level], [None] otherwise *)
+(** [as_defined_cst id] returns [Some level] if [id] is a constant defined at stratification level [level],
+    [None] otherwise *)
 
 val as_defined_cst_level : ID.t -> int option
 val is_defined_cst : ID.t -> bool
 
 val declare_defined_cst : ID.t -> level:int -> definition -> unit
-(** [declare_defined_cst id ~level] states that [id] is a defined
-    constant of given [level]. It means that it is defined based only
-    on constants of strictly lower levels *)
+(** [declare_defined_cst id ~level] states that [id] is a defined constant of given [level]. It means that it is
+    defined based only on constants of strictly lower levels *)
 
 val scan_stmt_for_defined_cst : clause_t -> unit
 (** Try and declare defined constants in the given statement *)
@@ -141,9 +148,8 @@ val scan_tst_rewrite : input_t -> unit
 (** {2 Inductive Types} *)
 
 val scan_stmt_for_ind_ty : clause_t -> unit
-(** [scan_stmt_for_ind_ty stmt] examines [stmt], and, if the statement is a
-    declaration of inductive types or constants,
-    it declares them using {!declare_ty} or {!declare_inductive_constant}. *)
+(** [scan_stmt_for_ind_ty stmt] examines [stmt], and, if the statement is a declaration of inductive types or
+    constants, it declares them using {!declare_ty} or {!declare_inductive_constant}. *)
 
 val scan_simple_stmt_for_ind_ty : input_t -> unit
 (** Same as {!scan_stmt} but on earlier statements *)
@@ -162,8 +168,8 @@ val sine_axiom_selector :
   ?tolerance:float ->
   input_t Iter.t ->
   input_t Iter.t
-(** Implementation of SinE algorithm with the usual parameters
-    described in Hoder and Voronkov Sine Qua Non paper *)
+(** Implementation of SinE algorithm with the usual parameters described in Hoder and Voronkov Sine Qua Non paper
+*)
 
 (** {2 Iterators} *)
 

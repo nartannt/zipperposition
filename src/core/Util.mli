@@ -4,9 +4,7 @@
 
 (** Various helpers for the provers.
 
-    It provides counters for statistics, basic profilers, helper functions,
-    debugging functions…
-*)
+    It provides counters for statistics, basic profilers, helper functions, debugging functions… *)
 
 (** {2 Time facilities} *)
 
@@ -44,12 +42,10 @@ module Section : sig
   (** Default section, with no parent *)
 
   val make : ?parent:t -> ?inheriting:t list -> string -> t
-  (** [make ?parent ?inheriting name] makes a new section with the given name.
-      It has a parent (default [root]), used to give it a name. It can
-      also have a list of sections it inherits from.
-      Unless specified explicitly otherwise (using
-      {!set_debug}, the level of the section will be the max level of its
-      parent and its inherited sections. *)
+  (** [make ?parent ?inheriting name] makes a new section with the given name. It has a parent (default [root]),
+      used to give it a name. It can also have a list of sections it inherits from. Unless specified explicitly
+      otherwise (using {!set_debug}, the level of the section will be the max level of its parent and its
+      inherited sections. *)
 end
 
 val set_debug : int -> unit
@@ -62,8 +58,8 @@ val break_on_debug : bool ref
 (** Shall we wait for user input after each debug message? *)
 
 val debugf : ?section:Section.t -> int -> ('a, Format.formatter, unit, unit) format4 -> ('a -> unit) -> unit
-(** Print a debug message, with the given section and verbosity level.
-    The message might be dropped if its level is too high. *)
+(** Print a debug message, with the given section and verbosity level. The message might be dropped if its level
+    is too high. *)
 
 val debug : ?section:Section.t -> int -> string -> unit
 (** Cheap non-formatting version of {!debugf} *)
@@ -81,8 +77,8 @@ val warnf : ('a, Format.formatter, unit, unit) format4 -> 'a
 (** Emit warning, with formatting *)
 
 exception Error of string * string
-(** generalist error that do not really belong elsewhere.
-    [Error (where,what)] means that error [what] was raised from [where]. *)
+(** generalist error that do not really belong elsewhere. [Error (where,what)] means that error [what] was raised
+    from [where]. *)
 
 val error : where:string -> string -> 'a
 (** [error msg] raises [Error msg]
@@ -149,9 +145,8 @@ end
 (** {2 Others} *)
 
 val finally : do_:(unit -> unit) -> (unit -> 'a) -> 'a
-(** [finally ~do_ f] calls [f ()] and returns its result. If it raises, the
-    same exception is raised; in {b any} case, [do_ ()] is called after
-    [f ()] terminates. *)
+(** [finally ~do_ f] calls [f ()] and returns its result. If it raises, the same exception is raised; in {b any}
+    case, [do_ ()] is called after [f ()] terminates. *)
 
 val pp_pair : ?sep:string -> 'a CCFormat.printer -> 'b CCFormat.printer -> ('a * 'b) CCFormat.printer
 
@@ -162,9 +157,8 @@ val pp_seq : ?sep:string -> 'a CCFormat.printer -> 'a Seq.t CCFormat.printer
 val pp_iter : ?sep:string -> 'a CCFormat.printer -> 'a Iter.t CCFormat.printer
 
 val pp_list0 : ?sep:string -> 'a CCFormat.printer -> 'a list CCFormat.printer
-(** Print a list with a whitespace in front if it's non empty, or
-    does nothing if the list is empty
-    Default separator is " " *)
+(** Print a list with a whitespace in front if it's non empty, or does nothing if the list is empty Default
+    separator is " " *)
 
 val tstp_needs_escaping : string -> bool
 (** Is this name a proper TSTP identifier, or does it need ' ' around it? *)
@@ -194,5 +188,4 @@ val escape_dot : string -> string
 type 'a or_error = ('a, string) CCResult.t
 
 val popen : cmd:string -> input:string -> string or_error
-(** Run the given command [cmd] with the given [input], wait for it
-    to terminate, and return its stdout. *)
+(** Run the given command [cmd] with the given [input], wait for it to terminate, and return its stdout. *)

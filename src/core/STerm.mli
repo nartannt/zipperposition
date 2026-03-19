@@ -4,34 +4,40 @@
 
 (** Simple terms, that are not hashconsed, nor typed.
 
-    Those do not use De Bruijn indices for variable binding,
-    but simply names (scoping is done later).
-    Their simplicity make them good for heavy AST transformations, output of
-    parsing, etc.
+    Those do not use De Bruijn indices for variable binding, but simply names (scoping is done later). Their
+    simplicity make them good for heavy AST transformations, output of parsing, etc.
 
-    Terms are only compared, hashsed, etc. by their "term" component (the algebraic
-    variant). Additional fields (location…) are ignored for almost every
-    operation.
-*)
+    Terms are only compared, hashsed, etc. by their "term" component (the algebraic variant). Additional fields
+    (location…) are ignored for almost every operation. *)
 
 type location = ParseLocation.t
-type var = V of string | Wildcard
 
-type t = private { term : view; loc : location option; attrs : attr list }
-and match_branch = Match_case of string * var list * t | Match_default of t
+type var =
+  | V of string
+  | Wildcard
+
+type t = private {
+  term: view;
+  loc: location option;
+  attrs: attr list;
+}
+
+and match_branch =
+  | Match_case of string * var list * t
+  | Match_default of t
 
 and view =
-   | Var of var  (** variable *)
-   | Const of string  (** constant *)
-   | AppBuiltin of Builtin.t * t list
-   | App of t * t list  (** apply term *)
-   | Ite of t * t * t
-   | Match of t * match_branch list
-   | Let of (var * t) list * t
-   | With of (var * t) list * t
-   | Bind of Binder.t * typed_var list * t  (** bind n variables *)
-   | List of t list  (** special constructor for lists *)
-   | Record of (string * t) list * var option  (** extensible record *)
+  | Var of var  (** variable *)
+  | Const of string  (** constant *)
+  | AppBuiltin of Builtin.t * t list
+  | App of t * t list  (** apply term *)
+  | Ite of t * t * t
+  | Match of t * match_branch list
+  | Let of (var * t) list * t
+  | With of (var * t) list * t
+  | Bind of Binder.t * typed_var list * t  (** bind n variables *)
+  | List of t list  (** special constructor for lists *)
+  | Record of (string * t) list * var option  (** extensible record *)
 
 and typed_var = var * t option
 and attr = Attr_distinct_const
@@ -154,7 +160,6 @@ type subst = t StrMap.t
 val empty_subst : subst
 
 val merge_subst : subst -> subst -> subst
-(** [merge a b] merges [a] into [b], but favors [b] in case
-    of conflict *)
+(** [merge a b] merges [a] into [b], but favors [b] in case of conflict *)
 
 val apply_subst : subst -> term -> term

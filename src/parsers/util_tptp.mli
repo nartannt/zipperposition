@@ -21,18 +21,15 @@ type parse_cache
 val create_parse_cache : unit -> parse_cache
 
 val find_file : string -> string -> string option
-(** [find_file name dir] looks for a file with the given [name],
-    recursively, in [dir], or in its parent dir recursively.
-    It also looks in the "TPTP" environment variable. *)
+(** [find_file name dir] looks for a file with the given [name], recursively, in [dir], or in its parent dir
+    recursively. It also looks in the "TPTP" environment variable. *)
 
 val parse_lexbuf : ?names:A.name list -> Lexing.lexbuf -> untyped A.t Iter.t or_error
-(** Given a lexbuf, try to parse its content into a sequence of untyped
-    declarations *)
+(** Given a lexbuf, try to parse its content into a sequence of untyped declarations *)
 
 val parse_file : ?cache:parse_cache -> recursive:bool -> string -> untyped A.t Iter.t or_error
-(** Parsing a TPTP file is here presented with a [recursive] option
-    that, if true, will make "include" directives to be recursively
-    parsed. It uses {!find_file} for included files.
+(** Parsing a TPTP file is here presented with a [recursive] option that, if true, will make "include" directives
+    to be recursively parsed. It uses {!find_file} for included files.
     @param parse_cache used to avoid including the same file twice, if [recursive=true]
     @return an error-wrapped sequence of declarations. *)
 

@@ -2,37 +2,38 @@
 
 (** {1 Simple Typed Terms} *)
 
-(** Similar to {!STerm}, but this time the terms are properly
-    scoped (using {!Var}) and typed.
+(** Similar to {!STerm}, but this time the terms are properly scoped (using {!Var}) and typed.
 
-    These terms are suitable for many preprocessing transformations,
-    including {!CNF}.
+    These terms are suitable for many preprocessing transformations, including {!CNF}.
 
-    They can be obtained from {!STerm.t} using {!TypeInference}.
-*)
+    They can be obtained from {!STerm.t} using {!TypeInference}. *)
 
 type location = ParseLocation.t
 type t
 type term = t
 type ty = t
 
-type match_cstor = { cstor_id : ID.t; cstor_ty : ty; cstor_args : ty list }
+type match_cstor = {
+  cstor_id: ID.t;
+  cstor_ty: ty;
+  cstor_args: ty list;
+}
 (** a constructor of given type, applied to a list of type argumentss *)
 
 type match_branch = match_cstor * t Var.t list * t
 
 type view = private
-   | Var of t Var.t  (** variable *)
-   | Const of ID.t  (** constant *)
-   | App of t * t list  (** apply term *)
-   | Ite of t * t * t
-   | Match of t * match_branch list
-   | Let of (t Var.t * t) list * t
-   | Bind of Binder.t * t Var.t * t  (** bind variable in term *)
-   | AppBuiltin of Builtin.t * t list
-   | Multiset of t list
-   | Record of (string * t) list * t option  (** extensible record *)
-   | Meta of meta_var  (** Unification variable *)
+  | Var of t Var.t  (** variable *)
+  | Const of ID.t  (** constant *)
+  | App of t * t list  (** apply term *)
+  | Ite of t * t * t
+  | Match of t * match_branch list
+  | Let of (t Var.t * t) list * t
+  | Bind of Binder.t * t Var.t * t  (** bind variable in term *)
+  | AppBuiltin of Builtin.t * t list
+  | Multiset of t list
+  | Record of (string * t) list * t option  (** extensible record *)
+  | Meta of meta_var  (** Unification variable *)
 
 (* a variable with a one-shot binding, and some annotation about
    whether it can be generalized *)
@@ -102,17 +103,24 @@ val box_opaque : t -> t
 
 module Ty : sig
   type t = term
-  type builtin = Prop | TType | Term | Int | Rat | Real
+
+  type builtin =
+    | Prop
+    | TType
+    | Term
+    | Int
+    | Rat
+    | Real
 
   type view =
-     | Ty_builtin of builtin
-     | Ty_var of t Var.t
-     | Ty_app of ID.t * t list
-     | Ty_fun of t list * t
-     | Ty_forall of t Var.t * t
-     | Ty_multiset of t
-     | Ty_record of (string * t) list * t Var.t option
-     | Ty_meta of meta_var
+    | Ty_builtin of builtin
+    | Ty_var of t Var.t
+    | Ty_app of ID.t * t list
+    | Ty_fun of t list * t
+    | Ty_forall of t Var.t * t
+    | Ty_multiset of t
+    | Ty_record of (string * t) list * t Var.t option
+    | Ty_meta of meta_var
 
   val view : t -> view
 
@@ -144,8 +152,7 @@ module Ty : sig
   val close_forall : t -> t
 
   val unfold : t -> t Var.t list * t list * t
-  (** [unfold [forall a b. x y z -> ret]] returns the triples
-      [[a,b], [x,y,z], ret] *)
+  (** [unfold [forall a b. x y z -> ret]] returns the triples [[a,b], [x,y,z], ret] *)
 
   val arity : t -> int * int
   (** [arity ty] returns [(n,m)] where [ty = forall x1..xn (a1 ... am -> ret)] *)
@@ -177,19 +184,19 @@ module Form : sig
   type t = term
 
   type view =
-     | True
-     | False
-     | Atom of t
-     | Eq of t * t
-     | Neq of t * t
-     | Equiv of t * t
-     | Xor of t * t
-     | Imply of t * t
-     | And of t list
-     | Or of t list
-     | Not of t
-     | Forall of t Var.t * t
-     | Exists of t Var.t * t
+    | True
+    | False
+    | Atom of t
+    | Eq of t * t
+    | Neq of t * t
+    | Equiv of t * t
+    | Xor of t * t
+    | Imply of t * t
+    | And of t list
+    | Or of t list
+    | Not of t
+    | Forall of t Var.t * t
+    | Exists of t Var.t * t
 
   val view : t -> view
 
@@ -235,12 +242,11 @@ val is_monomorphic : t -> bool
 
 val is_subterm : strict:bool -> t -> of_:t -> bool
 (** [is_subterm a ~of_:b] is true if [a] is a subterm of [b].
-    @param strict if true, [a] must be a strict subterm of [b],
-      that is, not [b] itself *)
+    @param strict if true, [a] must be a strict subterm of [b], that is, not [b] itself *)
 
 val closed : t -> bool
-(** [closed t] is [true] iff all bound variables of [t] occur under a
-    binder (i.e. they are actually bound in [t]) *)
+(** [closed t] is [true] iff all bound variables of [t] occur under a binder (i.e. they are actually bound in
+    [t]) *)
 
 val unfold_binder : Binder.t -> t -> t Var.t list * t
 (** [unfold_binder b (b v1 (b v2... (b vn t)))] returns [[v1,...,vn], t] *)
@@ -292,8 +298,7 @@ module Subst : sig
   val mem : t -> term Var.t -> bool
 
   val add : t -> term Var.t -> term -> t
-  (** Add new binding to substitution
-      Fails if the variable is bound already *)
+  (** Add new binding to substitution Fails if the variable is bound already *)
 
   val find : t -> term Var.t -> term option
 
@@ -305,8 +310,7 @@ module Subst : sig
   val eval : ?rename_binders:bool -> t -> term -> term
 
   val eval_nonrec : t -> term -> term
-  (** Evaluate under substitution, but consider the substitution as
-      not idempotent *)
+  (** Evaluate under substitution, but consider the substitution as not idempotent *)
 
   include Interfaces.PRINT with type t := t
 end
@@ -340,15 +344,13 @@ module UStack : sig
   (** Save current state *)
 
   val restore : st:t -> snapshot -> unit
-  (** Restore all references to their state at [snapshot]. Bindings
-      done since are undone. *)
+  (** Restore all references to their state at [snapshot]. Bindings done since are undone. *)
 end
 
 val unify : ?allow_open:bool -> ?loc:location -> ?st:UStack.t -> ?subst:Subst.t -> term -> term -> unit
-(** unifies destructively the two given terms, by modifying references
-      that occur under {!Meta}. Regular variables are not modified.
-    @param allow_open if true, metas can be unified to terms
-      with free variables (default false)
+(** unifies destructively the two given terms, by modifying references that occur under {!Meta}. Regular
+    variables are not modified.
+    @param allow_open if true, metas can be unified to terms with free variables (default false)
     @param st used for backtracking
     @param subst substitution for bound variables
     @raise UnifyFailure if unification fails. *)
@@ -362,9 +364,8 @@ val apply_unify :
   t ->
   t list ->
   t
-(** [apply_unify f_ty args] compute the type of a function of type [f_ty],
-    when applied to parameters [args]. The first elements of [args] might
-    be interpreted as types, the other ones as terms (whose types are unified
+(** [apply_unify f_ty args] compute the type of a function of type [f_ty], when applied to parameters [args]. The
+    first elements of [args] might be interpreted as types, the other ones as terms (whose types are unified
     against expected types). *)
 
 val app_infer : ?st:UStack.t -> ?subst:Subst.t -> t -> t list -> t

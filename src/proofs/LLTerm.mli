@@ -8,7 +8,15 @@ type t
 type var = t HVar.t
 
 module Int_op : sig
-  type t = Leq0 | Geq0 | Lt0 | Gt0 | Eq0 | Neq0 | Divisible_by of Z.t | Not_div_by of Z.t
+  type t =
+    | Leq0
+    | Geq0
+    | Lt0
+    | Gt0
+    | Eq0
+    | Neq0
+    | Divisible_by of Z.t
+    | Not_div_by of Z.t
 
   val not : t -> t
   val equal : t -> t -> bool
@@ -17,7 +25,13 @@ module Int_op : sig
 end
 
 module Rat_op : sig
-  type t = Leq0 | Geq0 | Lt0 | Gt0 | Eq0 | Neq0
+  type t =
+    | Leq0
+    | Geq0
+    | Lt0
+    | Gt0
+    | Eq0
+    | Neq0
 
   val not : t -> t
   val equal : t -> t -> bool
@@ -26,16 +40,20 @@ module Rat_op : sig
 end
 
 type view =
-   | Type
-   | Const of ID.t
-   | App of t * t  (** curried application *)
-   | Arrow of t * t  (** functional arrow *)
-   | Var of var  (** bound var *)
-   | Bind of { binder : Binder.t; ty_var : t; body : t }
-   | AppBuiltin of Builtin.t * t list
-   | Ite of t * t * t
-   | Int_pred of Z.t linexp * Int_op.t
-   | Rat_pred of Q.t linexp * Rat_op.t
+  | Type
+  | Const of ID.t
+  | App of t * t  (** curried application *)
+  | Arrow of t * t  (** functional arrow *)
+  | Var of var  (** bound var *)
+  | Bind of {
+      binder: Binder.t;
+      ty_var: t;
+      body: t;
+    }
+  | AppBuiltin of Builtin.t * t list
+  | Ite of t * t * t
+  | Int_pred of Z.t linexp * Int_op.t
+  | Rat_pred of Q.t linexp * Rat_op.t
 
 and 'a linexp
 (** linear expression with coeffs of type 'a *)
@@ -101,21 +119,27 @@ module Form : sig
   type t = term
 
   type view = private
-     | True
-     | False
-     | Or of t list
-     | And of t list
-     | Not of t
-     | Equiv of t * t
-     | Xor of t * t
-     | Imply of t * t
-     | Atom of t
-     | Eq of t * t
-     | Neq of t * t
-     | Int_pred of Z.t linexp * Int_op.t
-     | Rat_pred of Q.t linexp * Rat_op.t
-     | Forall of { ty_var : ty; body : t }
-     | Exists of { ty_var : ty; body : t }
+    | True
+    | False
+    | Or of t list
+    | And of t list
+    | Not of t
+    | Equiv of t * t
+    | Xor of t * t
+    | Imply of t * t
+    | Atom of t
+    | Eq of t * t
+    | Neq of t * t
+    | Int_pred of Z.t linexp * Int_op.t
+    | Rat_pred of Q.t linexp * Rat_op.t
+    | Forall of {
+        ty_var: ty;
+        body: t;
+      }
+    | Exists of {
+        ty_var: ty;
+        body: t;
+      }
 
   val view : t -> view
   val pp : t CCFormat.printer

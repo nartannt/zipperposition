@@ -2,19 +2,16 @@
 
 (** {1 Inner Terms} *)
 
-(** Those terms are not designed to be used directly, but rather to provide
-    a generic backend (implementing De Bruijn indices, subterms, substitutions,
-    etc.) for other more specific representations like {!Type.t} and {!Term.t}.
+(** Those terms are not designed to be used directly, but rather to provide a generic backend (implementing De
+    Bruijn indices, subterms, substitutions, etc.) for other more specific representations like {!Type.t} and
+    {!Term.t}.
 
-    The point is that we only have to do substitution, hashconsing,
-    and De Bruijn indices manipulation in one place;
-    it also makes it easy to make terms
-    and types occur in one another (types as parameters to terms, etc.)
+    The point is that we only have to do substitution, hashconsing, and De Bruijn indices manipulation in one
+    place; it also makes it easy to make terms and types occur in one another (types as parameters to terms,
+    etc.)
 
-    NOTE: this should be used with a lot of caution. Few checks are performed
-    (even typing checks) and it is easy to obtain non-closed terms
-    or ill-typed terms by manipulating this carelessly.
-*)
+    NOTE: this should be used with a lot of caution. Few checks are performed (even typing checks) and it is easy
+    to obtain non-closed terms or ill-typed terms by manipulating this carelessly. *)
 
 (* ho_weight presents the syntactic weight of eta-expanded
    term in which lambda prefixes are not counted in the weight.
@@ -23,24 +20,26 @@
 module I = Int32
 
 type t = private {
-   term : view;
-   ty : type_result;
-   mutable id : int;
-   mutable payload : exn;
-   props : I.t;
-   ho_weight : int lazy_t;
- }
+  term: view;
+  ty: type_result;
+  mutable id: int;
+  mutable payload: exn;
+  props: I.t;
+  ho_weight: int lazy_t;
+}
 (** Abstract type of term *)
 
 and view = private
-   | Var of t HVar.t  (** Free variable *)
-   | DB of int
-   | Bind of Binder.t * t * t  (** Type, sub-term *)
-   | Const of ID.t  (** Constant *)
-   | App of t * t list  (** Uncurried application *)
-   | AppBuiltin of Builtin.t * t list  (** For representing special constructors *)
+  | Var of t HVar.t  (** Free variable *)
+  | DB of int
+  | Bind of Binder.t * t * t  (** Type, sub-term *)
+  | Const of ID.t  (** Constant *)
+  | App of t * t list  (** Uncurried application *)
+  | AppBuiltin of Builtin.t * t list  (** For representing special constructors *)
 
-and type_result = NoType | HasType of t
+and type_result =
+  | NoType
+  | HasType of t
 
 type term = t
 
@@ -64,16 +63,16 @@ val same_l : t list -> t list -> bool
 (** Physical equality on lists of terms, roughly the same as {!List.forall2 (==)} *)
 
 val same_l_gen : t list -> t list -> bool
-(** Physical equality on lists of terms, roughly the same as {!List.forall2 (==),
+(** Physical equality on lists of terms, roughly the same as
+    {!List.forall2 (==),
     tolerates different lengths} *)
 
 val ho_weight : t -> int
 
 (** {3 Constructors}
 
-    Some constructors, such as {!record}, may raise
-    {!IllFormedTerm}if the arguments are ill-formed (several occurrences of
-    a key), or, for variables, if the number is negative *)
+    Some constructors, such as {!record}, may raise {!IllFormedTerm}if the arguments are ill-formed (several
+    occurrences of a key), or, for variables, if the number is negative *)
 
 exception IllFormedTerm of string
 
@@ -88,8 +87,7 @@ val app_builtin : ty:t -> Builtin.t -> t list -> t
 val builtin : ty:t -> Builtin.t -> t
 
 val tType : t
-(** The root of the type system. It doesn't have a type.
-    It has kind [Kind.Type] *)
+(** The root of the type system. It doesn't have a type. It has kind [Kind.Type] *)
 
 val arrow : t list -> t -> t
 (** Smart constructor for arrow types *)
@@ -137,9 +135,8 @@ module DB : sig
   type env = t DBEnv.t
 
   val closed : t -> bool
-  (** check whether the term is closed (all DB vars are bound within the
-      term). If this returns [true] then the term doesn't depend on
-      its environment. *)
+  (** check whether the term is closed (all DB vars are bound within the term). If this returns [true] then the
+      term doesn't depend on its environment. *)
 
   val contains : t -> int -> bool
   (** Does t contains the De Bruijn variable of index n? *)
@@ -151,25 +148,21 @@ module DB : sig
   (** shift the non-captured De Bruijn indexes in the term by n *)
 
   val unshift : ?depth:int -> int -> t -> t
-  (** [unshift n t] unshifts the term [t]'s bound variables by [n]. In
-      other words it decrements indices of all free De Bruijn variables
-      inside by [n]. Variables bound within [t] are left untouched. *)
+  (** [unshift n t] unshifts the term [t]'s bound variables by [n]. In other words it decrements indices of all
+      free De Bruijn variables inside by [n]. Variables bound within [t] are left untouched. *)
 
   val replace : t -> sub:t -> t
-  (** [replace t ~sub] replaces [sub] by a fresh De Bruijn index in [t].
-      Shifts other De Bruijn indices by 1 *)
+  (** [replace t ~sub] replaces [sub] by a fresh De Bruijn index in [t]. Shifts other De Bruijn indices by 1 *)
 
   val replace_l : t -> l:t list -> t
-  (** N-ary version of {!replace}
-      Shifts other De Bruijn indices by [length t] *)
+  (** N-ary version of {!replace} Shifts other De Bruijn indices by [length t] *)
 
   val from_var : t -> var:t -> t
-  (** [db_from_var t ~var] replace [var] by a De Bruijn symbol in t.
-      Same as {!replace}. *)
+  (** [db_from_var t ~var] replace [var] by a De Bruijn symbol in t. Same as {!replace}. *)
 
   val eval : env -> t -> t
-  (** Evaluate the term in the given De Bruijn environment, by
-      replacing De Bruijn indices by their value in the environment. *)
+  (** Evaluate the term in the given De Bruijn environment, by replacing De Bruijn indices by their value in the
+      environment. *)
 end
 
 (** {3 Iterators} *)
@@ -197,8 +190,7 @@ module Pos : sig
 end
 
 val replace : t -> old:t -> by:t -> t
-(** [replace t ~old ~by] syntactically replaces all occurrences of [old]
-    in [t] by the term [by]. *)
+(** [replace t ~old ~by] syntactically replaces all occurrences of [old] in [t] by the term [by]. *)
 
 val replace_m : t -> t Map.t -> t
 (** Simultaneous replacement of every [a->b] in the map *)
@@ -206,9 +198,8 @@ val replace_m : t -> t Map.t -> t
 (** {3 Variables} *)
 
 val bind_vars : ty:t -> Binder.t -> t HVar.t list -> t -> t
-(** [bind_vars ~ty b vars t] binds each [v in vars] with the binder [b],
-    with body [t], and each intermediate result has type [ty]
-    (not suitable for functions) *)
+(** [bind_vars ~ty b vars t] binds each [v in vars] with the binder [b], with body [t], and each intermediate
+    result has type [ty] (not suitable for functions) *)
 
 val close_vars : ty:t -> Binder.t -> t -> t
 (** Close all free variables of the term using the binding symbol *)
@@ -217,25 +208,22 @@ val fun_ : t -> t -> t
 val fun_l : t list -> t -> t
 
 val fun_of_fvars : t HVar.t list -> t -> t
-(** Build a function from a list of free vars + the body.
-    This performs the De Bruijn transformation, and shifts the body. *)
+(** Build a function from a list of free vars + the body. This performs the De Bruijn transformation, and shifts
+    the body. *)
 
 val open_fun : t -> t list * t
-(** [open_fun ty] "unrolls" function arrows from the left, so that
-    [open_fun (a -> (b -> (c -> d)))] returns [[a;b;c], d].
+(** [open_fun ty] "unrolls" function arrows from the left, so that [open_fun (a -> (b -> (c -> d)))] returns
+    [[a;b;c], d].
     @return the return type and the list of all its arguments *)
 
 val open_poly_fun : t -> int * t list * t
 (** [open_poly_fun ty] "unrolls" polymorphic function arrows from the left, so that
     [open_poly_fun (forall a b. f a -> (g b -> (c -> d)))] returns [2; [f a;g b;c], d].
-    @return the return type, the number of type variables,
-      and the list of all its arguments *)
+    @return the return type, the number of type variables, and the list of all its arguments *)
 
 val returns : t -> t
-(** [returns ty] opens polymorphic function types and gives only
-    the return type.
-    For example [returns (forall a b. f a -> (g b -> (c -> d)))] returns [d].
-*)
+(** [returns ty] opens polymorphic function types and gives only the return type. For example
+    [returns (forall a b. f a -> (g b -> (c -> d)))] returns [d]. *)
 
 val expected_ty_vars : t -> int
 (** @return the number of type variables that a type requires. *)
@@ -243,25 +231,23 @@ val expected_ty_vars : t -> int
 val open_bind : Binder.t -> t -> t list * t
 
 val open_bind_fresh : Binder.t -> t -> t HVar.t list * t
-(** [open_bind_fresh λ (λxy. F)] returns [[v1,v2], F[v1/x,v2/y]]
-    where [v1] and [v2] are fresh variables using {!HVar.fresh} *)
+(** [open_bind_fresh λ (λxy. F)] returns [[v1,v2], F[v1/x,v2/y]] where [v1] and [v2] are fresh variables using
+    {!HVar.fresh} *)
 
 val open_bind_fresh2 : ?eq_ty:(t -> t -> bool) -> Binder.t -> t -> t -> t HVar.t list * t * t
-(** [open_bind_free2 λ (λxy. F) (λxyz. G)]
-    returns [[v1,v2], F[v1/x,v2/y], λz.G[v1/x,v2/y]]
-    where [v1] and [v2] are fresh variables using {!HVar.fresh}
+(** [open_bind_free2 λ (λxy. F) (λxyz. G)] returns [[v1,v2], F[v1/x,v2/y], λz.G[v1/x,v2/y]] where [v1] and [v2]
+    are fresh variables using {!HVar.fresh}
     @param eq_ty checks whether type of bound variables are compatible *)
 
 val open_fun : t -> t list * t
-(** [open_fun ty] "unrolls" function arrows from the left, so that
-    [open_fun (a -> (b -> (c -> d)))] returns [[a;b;c], d].
+(** [open_fun ty] "unrolls" function arrows from the left, so that [open_fun (a -> (b -> (c -> d)))] returns
+    [[a;b;c], d].
     @return the return type and the list of all its arguments *)
 
 val open_poly_fun : t -> int * t list * t
 (** [open_poly_fun ty] "unrolls" polymorphic function arrows from the left, so that
     [open_poly_fun (forall a b. f a -> (g b -> (c -> d)))] returns [2; [f a;g b;c], d].
-    @return the return type, the number of type variables,
-      and the list of all its arguments *)
+    @return the return type, the number of type variables, and the list of all its arguments *)
 
 val open_bind : Binder.t -> t -> t list * t
 val open_bind2 : Binder.t -> t -> t -> t list * t * t list * t
@@ -293,8 +279,8 @@ val is_a_type : t -> bool
 (** Is this a type? (i.e. its type is {!tType}) *)
 
 val as_app : t -> t * t list
-(** [as_app t] decomposes [t] into a head (non-application) and arguments,
-    such as [(let f,l = as_app t in app f l) = t] *)
+(** [as_app t] decomposes [t] into a head (non-application) and arguments, such as
+    [(let f,l = as_app t in app f l) = t] *)
 
 val as_var : t -> t HVar.t option
 val as_var_exn : t -> t HVar.t

@@ -2,9 +2,8 @@
 
 (** {1 Builtin Objects} *)
 
-(** Most objects that have a special meaning in logic are represented
-    by a {b builtin}. A builtin is a value of type {!t}; it might
-    correspond to different names in different input syntaxes.
+(** Most objects that have a special meaning in logic are represented by a {b builtin}. A builtin is a value of
+    type {!t}; it might correspond to different names in different input syntaxes.
 
     Builtins cover numbers, connectives, and builtin types, among others.
 
@@ -13,82 +12,85 @@
 val _t_bigger_false : bool ref
 
 type t =
-   | Not
-   | And
-   | Or
-   | Imply
-   | Equiv
-   | Xor
-   | Eq
-   | Neq
-   | HasType
-   | True
-   | False
-   | Arrow
-   | Wildcard
-   | Multiset (* type of multisets *)
-   | TType (* type of types *)
-   | Prop
-   | Term
-   | ForallConst  (** constant for simulating forall *)
-   | ExistsConst  (** constant for simulating exists *)
-   | ChoiceConst
-   | Grounding  (** used for inst-gen *)
-   | TyInt
-   | TyRat
-   | TyReal
-   | Int of Z.t
-   | Rat of Q.t
-   | Real of string (* for now… *)
-   | Floor
-   | Ceiling
-   | Truncate
-   | Round
-   | Prec
-   | Succ
-   | Sum
-   | Difference
-   | Uminus
-   | Product
-   | Quotient
-   | Quotient_e
-   | Quotient_t
-   | Quotient_f
-   | Remainder_e
-   | Remainder_t
-   | Remainder_f
-   | Is_int
-   | Is_rat
-   | To_int
-   | To_rat
-   | Less
-   | Lesseq
-   | Greater
-   | Greatereq
-   | Box_opaque  (** hint not to open this formula *)
-   | Pseudo_de_bruijn of int  (** magic to embed De Bruijn indices in normal terms *)
-   | BComb  (** BCIKS combinators *)
-   | CComb
-   | IComb
-   | KComb
-   | SComb
-   | Distinct
+  | Not
+  | And
+  | Or
+  | Imply
+  | Equiv
+  | Xor
+  | Eq
+  | Neq
+  | HasType
+  | True
+  | False
+  | Arrow
+  | Wildcard
+  | Multiset (* type of multisets *)
+  | TType (* type of types *)
+  | Prop
+  | Term
+  | ForallConst  (** constant for simulating forall *)
+  | ExistsConst  (** constant for simulating exists *)
+  | ChoiceConst
+  | Grounding  (** used for inst-gen *)
+  | TyInt
+  | TyRat
+  | TyReal
+  | Int of Z.t
+  | Rat of Q.t
+  | Real of string (* for now… *)
+  | Floor
+  | Ceiling
+  | Truncate
+  | Round
+  | Prec
+  | Succ
+  | Sum
+  | Difference
+  | Uminus
+  | Product
+  | Quotient
+  | Quotient_e
+  | Quotient_t
+  | Quotient_f
+  | Remainder_e
+  | Remainder_t
+  | Remainder_f
+  | Is_int
+  | Is_rat
+  | To_int
+  | To_rat
+  | Less
+  | Lesseq
+  | Greater
+  | Greatereq
+  | Box_opaque  (** hint not to open this formula *)
+  | Pseudo_de_bruijn of int  (** magic to embed De Bruijn indices in normal terms *)
+  | BComb  (** BCIKS combinators *)
+  | CComb
+  | IComb
+  | KComb
+  | SComb
+  | Distinct
 
 include Interfaces.HASH with type t := t
 include Interfaces.ORD with type t := t
 include Interfaces.PRINT with type t := t
 
-type fixity = Infix_binary | Infix_nary | Prefix
+type fixity =
+  | Infix_binary
+  | Infix_nary
+  | Prefix
 
 val fixity : t -> fixity
 
 val is_prefix : t -> bool
-(** [is_infix s] returns [true] if the way the symbol is printed should
-    be used in a prefix way if applied to 1 argument *)
+(** [is_infix s] returns [true] if the way the symbol is printed should be used in a prefix way if applied to 1
+    argument *)
 
 val is_infix : t -> bool
-(** [is_infix s] returns [true] if the way the symbol is printed should
-    be used in an infix way if applied to two arguments *)
+(** [is_infix s] returns [true] if the way the symbol is printed should be used in an infix way if applied to two
+    arguments *)
 
 val ty : t -> [ `Int | `Rat | `Other ]
 val mk_int : Z.t -> t
@@ -178,18 +180,18 @@ module Tbl : Hashtbl.S with type key = t
 (** Each tag describes an extension of FO logic *)
 module Tag : sig
   type t =
-     | T_lia  (** integer arith *)
-     | T_lra  (** rational arith *)
-     | T_ho  (** higher order *)
-     | T_live_cnf  (** live_cnf *)
-     | T_ho_norm  (** higher-order normalization *)
-     | T_dont_increase_depth  (** don't increase depth  *)
-     | T_ext  (** extensionality *)
-     | T_ind  (** induction *)
-     | T_data  (** datatypes *)
-     | T_distinct  (** distinct constants *)
-     | T_ac of ID.t  (** AC symbol *)
-     | T_cannot_orphan
+    | T_lia  (** integer arith *)
+    | T_lra  (** rational arith *)
+    | T_ho  (** higher order *)
+    | T_live_cnf  (** live_cnf *)
+    | T_ho_norm  (** higher-order normalization *)
+    | T_dont_increase_depth  (** don't increase depth *)
+    | T_ext  (** extensionality *)
+    | T_ind  (** induction *)
+    | T_data  (** datatypes *)
+    | T_distinct  (** distinct constants *)
+    | T_ac of ID.t  (** AC symbol *)
+    | T_cannot_orphan
 
   val compare : t -> t -> int
   val pp : t CCFormat.printer
@@ -212,18 +214,19 @@ module TPTP : sig
   (** printer for TPTP *)
 end
 
-(** The module {!ArithOp} deals only with numeric constants, i.e., all symbols
-    must verify {!is_numeric} (and most of the time, have the same type).
-    The semantics of operations follows
-    {{: http://www.cs.miami.edu/~tptp/TPTP/TR/TPTPTR.shtml#Arithmetic} TPTP}.
-*)
+(** The module {!ArithOp} deals only with numeric constants, i.e., all symbols must verify {!is_numeric} (and
+    most of the time, have the same type). The semantics of operations follows
+    {{:http://www.cs.miami.edu/~tptp/TPTP/TR/TPTPTR.shtml#Arithmetic} TPTP}. *)
 
 module ArithOp : sig
   exception TypeMismatch of string
-  (** This exception is raised when Arith functions are called
-      on non-numeric values *)
+  (** This exception is raised when Arith functions are called on non-numeric values *)
 
-  type arith_view = [ `Int of Z.t | `Rat of Q.t | `Other of t ]
+  type arith_view =
+    [ `Int of Z.t
+    | `Rat of Q.t
+    | `Other of t
+    ]
 
   val view : t -> arith_view
   (** Arith centered view of symbols *)
@@ -269,8 +272,7 @@ module ArithOp : sig
 
   val divisors : Z.t -> Z.t list
   (** List of non-trivial strict divisors of the int.
-      @return [] if int <= 1, the list of divisors otherwise. Empty list
-        for prime numbers, obviously. *)
+      @return [] if int <= 1, the list of divisors otherwise. Empty list for prime numbers, obviously. *)
 end
 
 (** {2 ZF} *)

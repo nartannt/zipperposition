@@ -2,15 +2,17 @@
 
 (** {1 Feature Vector indexing} *)
 
-(** Feature Vector indexing (see Schulz 2004) for efficient forward
-    and backward subsumption on Horn Clauses.
+(** Feature Vector indexing (see Schulz 2004) for efficient forward and backward subsumption on Horn Clauses.
 
-    This allows to retrieve clauses that (potentially) subsume
-    or are subsumed by a given query clause.
-*)
+    This allows to retrieve clauses that (potentially) subsume or are subsumed by a given query clause. *)
 
 type labels = Index_intf.labels
-type feature = N of int | S of ID.Set.t | M of int ID.Map.t | L of labels
+
+type feature =
+  | N of int
+  | S of ID.Set.t
+  | M of int ID.Map.t
+  | L of labels
 
 type feature_vector = feature IArray.t
 (** a vector of feature *)

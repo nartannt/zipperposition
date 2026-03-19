@@ -4,7 +4,14 @@
 
 (** {2 Combined nonstrict-strict partial orders} *)
 
-type t = Lt | Leq | Eq | Geq | Gt | Incomparable
+type t =
+  | Lt
+  | Leq
+  | Eq
+  | Geq
+  | Gt
+  | Incomparable
+
 type comparison = t
 
 val equal : t -> t -> bool
@@ -15,8 +22,7 @@ val opp : t -> t
 (** Opposite of the relation: a R b becomes b R a *)
 
 val to_total : t -> int
-(** Conversion to a total ordering. Geq, Leq, and Incomparable are translated
-    to 0 (equal). *)
+(** Conversion to a total ordering. Geq, Leq, and Incomparable are translated to 0 (equal). *)
 
 val of_total : int -> t
 (** Conversion from a total order *)

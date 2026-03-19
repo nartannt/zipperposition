@@ -2,12 +2,9 @@
 
 (** {1 Main AST before Typing} *)
 
-(** Parsers eventually output this AST, that uses simple terms ({!STerm})
-    for types, terms, and formulas.
+(** Parsers eventually output this AST, that uses simple terms ({!STerm}) for types, terms, and formulas.
 
-    Everything is possibly annotated with a parse location so that
-    error messages can be properly localized.
-*)
+    Everything is possibly annotated with a parse location so that error messages can be properly localized. *)
 
 module Loc = ParseLocation
 module T = STerm
@@ -17,32 +14,44 @@ type ty = T.t
 type form = T.t
 
 type data = {
-   data_name : string;
-   data_vars : string list;
-   data_cstors : (string * (string option * ty) list) list;
-       (* list of constructor. Each constructor is paired with a list of
+  data_name: string;
+  data_vars: string list;
+  data_cstors: (string * (string option * ty) list) list;
+      (* list of constructor. Each constructor is paired with a list of
           arguments, that is, an optional projector + the type *)
- }
+}
 (** Basic definition of inductive types *)
 
 (** Attributes (general terms) *)
-type attr = A_app of string * attr list | A_quoted of string | A_list of attr list
+type attr =
+  | A_app of string * attr list
+  | A_quoted of string
+  | A_list of attr list
 
 type attrs = attr list
-type def = { def_id : string; def_ty : ty; def_rules : term list }
+
+type def = {
+  def_id: string;
+  def_ty: ty;
+  def_rules: term list;
+}
 
 (** Statement *)
 type statement_view =
-   | Include of string
-   | Decl of string * ty
-   | Def of def list
-   | Rewrite of term
-   | Data of data list
-   | Assert of form
-   | Lemma of form
-   | Goal of form
+  | Include of string
+  | Decl of string * ty
+  | Def of def list
+  | Rewrite of term
+  | Data of data list
+  | Assert of form
+  | Lemma of form
+  | Goal of form
 
-type statement = { stmt : statement_view; attrs : attrs; loc : Loc.t option }
+type statement = {
+  stmt: statement_view;
+  attrs: attrs;
+  loc: Loc.t option;
+}
 
 val default_attrs : attrs
 val mk_def : string -> ty -> term list -> def

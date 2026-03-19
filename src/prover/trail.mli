@@ -51,7 +51,6 @@ type valuation = bool_lit -> bool
 (** A boolean valuation *)
 
 val is_active : t -> v:valuation -> bool
-(** [Trail.is_active t ~v] is true iff all boolean literals
-    in [t] are satisfied in the boolean valuation [v]. *)
+(** [Trail.is_active t ~v] is true iff all boolean literals in [t] are satisfied in the boolean valuation [v]. *)
 
 val to_s_form : t -> TypedSTerm.Form.t

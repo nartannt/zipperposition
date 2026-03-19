@@ -2,7 +2,10 @@
 
 open Logtk
 
-type spec = { sym : ID.t; ty : Type.t }
+type spec = {
+  sym: ID.t;
+  ty: Type.t;
+}
 
 module type S = sig
   module Env : Env.S
@@ -11,8 +14,7 @@ module type S = sig
   val on_add : spec Signal.t
 
   val add : proof:Proof.parent -> ID.t -> Type.t -> unit
-  (** Declare that the given symbol is AC, and update the Env subsequently
-      by adding clauses, etc. *)
+  (** Declare that the given symbol is AC, and update the Env subsequently by adding clauses, etc. *)
 
   val is_ac : ID.t -> bool
 
@@ -30,8 +32,7 @@ module type S = sig
   (** Is there any AC symbol? *)
 
   val scan_statement : Statement.clause_t -> unit
-  (** Check whether the statement contains an "AC" attribute, do the proper
-      declaration in this case *)
+  (** Check whether the statement contains an "AC" attribute, do the proper declaration in this case *)
 
   (** {2 Rules} *)
 

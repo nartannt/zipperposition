@@ -2,15 +2,21 @@
 
 (** {1 Simple Literal} *)
 
-(** Simple literals, used typically in {!CNF} before being converted to
-    whatever representation the prover prefers. *)
+(** Simple literals, used typically in {!CNF} before being converted to whatever representation the prover
+    prefers. *)
 
 type form = TypedSTerm.t
 type term = TypedSTerm.t
 
 exception NotALit of form
 
-type +'t t = True | False | Atom of 't * bool | Eq of 't * 't | Neq of 't * 't
+type +'t t =
+  | True
+  | False
+  | Atom of 't * bool
+  | Eq of 't * 't
+  | Neq of 't * 't
+
 type 'a lit = 'a t
 
 val of_form : form -> term t

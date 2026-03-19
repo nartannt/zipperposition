@@ -8,7 +8,11 @@
 
     @since 1.5 *)
 
-type +'a t = private { id : ID.t; ty : 'a }
+type +'a t = private {
+  id: ID.t;
+  ty: 'a;
+}
+
 type 'a var = 'a t
 
 val make : ty:'a -> ID.t -> 'a t

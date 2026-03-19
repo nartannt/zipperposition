@@ -2,8 +2,8 @@
 
 (** {1 Simplification Monad}
 
-    This monad is used to combine simplifications in a way that allows
-    to know if at least one simplification was performed, or not. *)
+    This monad is used to combine simplifications in a way that allows to know if at least one simplification was
+    performed, or not. *)
 
 type +'a t = 'a * [ `Same | `New ]
 

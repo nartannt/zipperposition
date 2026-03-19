@@ -2,8 +2,7 @@
 
 (** {1 Clause context}
 
-    A clause with a "hole" in it. Filling the whole with a term [t] is called
-    "applying the context to [t]".
+    A clause with a "hole" in it. Filling the whole with a term [t] is called "applying the context to [t]".
 
     The point is to relate different applications of the same context. *)
 
@@ -13,9 +12,8 @@ type term = Term.t
 type subst = Subst.t
 
 type t
-(** A context is represented as a regular array of literals, containing
-    at least one specific variable [x], paired with this variable [x].
-    Applying the context is a mere substitution *)
+(** A context is represented as a regular array of literals, containing at least one specific variable [x],
+    paired with this variable [x]. Applying the context is a mere substitution *)
 
 val compare : t -> t -> int
 val equal : t -> t -> bool
@@ -26,10 +24,9 @@ val make : Literals.t -> var:Term.var -> t
     @raise Assert_failure if the variable isn't present in any literal *)
 
 val extract : Literals.t -> term -> t option
-(** [extract lits t] returns [None] if [t] doesn't occur in [lits]. Otherwise,
-    it creates a fresh var [x], replaces [t] with [x] within [lits], and
-    returns the corresponding context.
-    Basically, if [extract lits t = Some c] then [apply c t = lits] *)
+(** [extract lits t] returns [None] if [t] doesn't occur in [lits]. Otherwise, it creates a fresh var [x],
+    replaces [t] with [x] within [lits], and returns the corresponding context. Basically, if
+    [extract lits t = Some c] then [apply c t = lits] *)
 
 val extract_exn : Literals.t -> term -> t
 (** Unsafe version of {!extract}.
@@ -39,16 +36,13 @@ val trivial : Literals.t -> term -> t
 (** Trivial context, that contains 0 holes. *)
 
 val apply : t -> term -> Literals.t
-(** [apply c t] fills the hole of [c] with the given term [t]. [t] and [c]
-    share no free variables. *)
+(** [apply c t] fills the hole of [c] with the given term [t]. [t] and [c] share no free variables. *)
 
 val apply_same_scope : t -> term -> Literals.t
-(** Same as {!apply}, but now variables from the context and variables
-    from the term live in the same scope *)
+(** Same as {!apply}, but now variables from the context and variables from the term live in the same scope *)
 
 val raw_lits : t -> Literals.t
-(** give access to the underlying literals. Careful not to depend
-    on the variable's actual name. *)
+(** give access to the underlying literals. Careful not to depend on the variable's actual name. *)
 
 (*
 val matching : t -> Literals.t -> term option

@@ -4,11 +4,9 @@
 
 (** Low level proofs, intended for mechanical proof checking.
 
-    Instantiations (substitutions) are explicit because that should make
-    the job of the checker easier.
+    Instantiations (substitutions) are explicit because that should make the job of the checker easier.
 
-    NOTE: this is still uncooked, and will probably change.
-*)
+    NOTE: this is still uncooked, and will probably change. *)
 
 open Logtk
 
@@ -26,23 +24,30 @@ type name = string
 type t
 
 type step =
-   | Goal
-   | Assert
-   | Negated_goal of t
-   | Trivial
-   | By_def of ID.t
-   | Define of ID.t
-   | Instantiate of { form : t; inst : inst; tags : tag list }
-   | Esa of name * t list
-   | Inference of {
-       intros : term list; (* local renaming for the conclusion's foralls, with fresh constants *)
-       local_intros : term list; (* variables introduced between hypothesis, not in conclusion *)
-       name : name;
-       parents : parent list;
-       tags : tag list;
-     }
+  | Goal
+  | Assert
+  | Negated_goal of t
+  | Trivial
+  | By_def of ID.t
+  | Define of ID.t
+  | Instantiate of {
+      form: t;
+      inst: inst;
+      tags: tag list;
+    }
+  | Esa of name * t list
+  | Inference of {
+      intros: term list; (* local renaming for the conclusion's foralls, with fresh constants *)
+      local_intros: term list; (* variables introduced between hypothesis, not in conclusion *)
+      name: name;
+      parents: parent list;
+      tags: tag list;
+    }
 
-and parent = { p_proof : t; p_inst : inst (* instantiate [forall] variables *) }
+and parent = {
+  p_proof: t;
+  p_inst: inst; (* instantiate [forall] variables *)
+}
 
 val id : t -> int
 val concl : t -> form
@@ -78,7 +83,10 @@ val inference : intros:term list -> local_intros:term list -> tags:tag list -> f
 
 (** {2 Checking steps} *)
 
-type check_res = R_ok | R_fail | R_skip
+type check_res =
+  | R_ok
+  | R_fail
+  | R_skip
 
 val get_check_res : t -> check_res option
 val set_check_res : t -> check_res -> unit

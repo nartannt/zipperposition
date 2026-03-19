@@ -13,31 +13,44 @@ val section : Util.Section.t
 type rule
 
 type tag = Builtin.Tag.t
-(** Tag for checking an inference. Each tag describes an extension of FO
-    that is used in the inference *)
+(** Tag for checking an inference. Each tag describes an extension of FO that is used in the inference *)
 
 type attrs = UntypedAST.attrs
 
 (** Classification of proof steps *)
 type kind =
-   | Intro of source * role
-   | Inference of rule * tag list
-   | Simplification of rule * tag list
-   | Esa of rule
-   | Trivial  (** trivial, or trivial within theories *)
-   | Define of ID.t * source  (** definition *)
-   | By_def of ID.t  (** following from the def of ID *)
+  | Intro of source * role
+  | Inference of rule * tag list
+  | Simplification of rule * tag list
+  | Esa of rule
+  | Trivial  (** trivial, or trivial within theories *)
+  | Define of ID.t * source  (** definition *)
+  | By_def of ID.t  (** following from the def of ID *)
 
-and source = private { src_id : int; src_view : source_view }
+and source = private {
+  src_id: int;
+  src_view: source_view;
+}
 (** Source of leaves (from some input problem, or internal def) *)
 
-and source_view = From_file of from_file * attrs | Internal of attrs
+and source_view =
+  | From_file of from_file * attrs
+  | Internal of attrs
 
 (** Intro role *)
-and role = R_assert | R_goal | R_def | R_decl | R_lemma
+and role =
+  | R_assert
+  | R_goal
+  | R_def
+  | R_decl
+  | R_lemma
 
 (* a statement in a file *)
-and from_file = { file : string; name : string option; loc : ParseLocation.t option }
+and from_file = {
+  file: string;
+  name: string option;
+  loc: ParseLocation.t option;
+}
 
 type 'a result_tc
 (** Typeclass for the result of a proof step *)
@@ -52,7 +65,11 @@ type proof
 (** Proof Step with its conclusion *)
 
 type t = proof
-type parent = P_of of t | P_subst of t * Subst.Projection.t
+
+type parent =
+  | P_of of t
+  | P_subst of t * Subst.Projection.t
+
 type info = UntypedAST.attr
 type infos = info list
 
@@ -60,9 +77,8 @@ module Tag = Builtin.Tag
 
 (** {2 Rule} *)
 
-(** A rule is a name for some specific inference or transformation rule
-    that is used to deduce formulas from other formulas.
-*)
+(** A rule is a name for some specific inference or transformation rule that is used to deduce formulas from
+    other formulas. *)
 module Rule : sig
   type t = rule
 
@@ -83,9 +99,7 @@ end
 
 (** {2 Source}
 
-    Where a statement/object originally comes from
-    (file, location, named statement, etc.)
-*)
+    Where a statement/object originally comes from (file, location, named statement, etc.) *)
 module Src : sig
   type t = source
 
@@ -108,17 +122,23 @@ end
 
 (** {2 Proof Results} *)
 
-(** A proof is used to deduce some results. We can handle diverse results
-    a different stages of the proof (starting with formulas, ending with clauses) *)
+(** A proof is used to deduce some results. We can handle diverse results a different stages of the proof
+    (starting with formulas, ending with clauses) *)
 
 module Result : sig
   type t = result
   type 'a tc = 'a result_tc
-  type flavor = [ `Pure_bool | `Absurd_lits | `Proof_of_false | `Vanilla | `Def ]
+
+  type flavor =
+    [ `Pure_bool
+    | `Absurd_lits
+    | `Proof_of_false
+    | `Vanilla
+    | `Def
+    ]
 
   type inst_subst = (term, term) Var.Subst.t
-  (** A mapping used during instantiation, to map pre-instantiation
-      variables to post-instantiation terms *)
+  (** A mapping used during instantiation, to map pre-instantiation variables to post-instantiation terms *)
 
   val make_tc :
     of_exn:(exn -> 'a option) ->
@@ -133,15 +153,11 @@ module Result : sig
     ?flavor:('a -> flavor) ->
     unit ->
     'a tc
-  (** Make a result typeclass, for considering values of type ['a] as proof
-      results.
+  (** Make a result typeclass, for considering values of type ['a] as proof results.
       @param pp_in print in given syntax
       @param is_stmt true only if ['a] is a toplevel statement (default false)
-      @param name returns the name of the result. Typically, a name from
-        the input file
-      @param to_form_subst apply substitution, then convert to form.
-      If not provided, will fail.
-  *)
+      @param name returns the name of the result. Typically, a name from the input file
+      @param to_form_subst apply substitution, then convert to form. If not provided, will fail. *)
 
   val make : 'a tc -> 'a -> t
   val form_tc : form tc
@@ -165,12 +181,10 @@ end
 
 (** {2 A proof step} *)
 
-(** An inference step is composed of a set of premises, a rule,
-    a status (theorem/trivial/equisatisfiable…), and is used to
-    deduce new {!result} using these premises and metadata.
+(** An inference step is composed of a set of premises, a rule, a status (theorem/trivial/equisatisfiable…), and
+    is used to deduce new {!result} using these premises and metadata.
 
-    A single step can be used to deduce several results.
-*)
+    A single step can be used to deduce several results. *)
 module Step : sig
   type t = step
 
@@ -217,18 +231,16 @@ module Step : sig
   (** Rule name for Esa/Simplification/Inference steps *)
 
   val distance_to_goal : t -> int option
-  (** [distance_to_conjecture p] returns [None] if [p] has no ancestor
-      that is a conjecture (including [p] itself). It returns [Some d]
-      if [d] is the distance, in the proof graph, to the closest
-      conjecture ancestor of [p] *)
+  (** [distance_to_conjecture p] returns [None] if [p] has no ancestor that is a conjecture (including [p]
+      itself). It returns [Some d] if [d] is the distance, in the proof graph, to the closest conjecture ancestor
+      of [p] *)
 
   val pp : t CCFormat.printer
 end
 
 (** {2 Parent} *)
 
-(** The link between a proof step and some intermediate results used
-    to prove its result *)
+(** The link between a proof step and some intermediate results used to prove its result *)
 
 module Parent : sig
   type t = parent
@@ -246,10 +258,8 @@ val pp_tags : tag list CCFormat.printer
 
 (** {2 Proof} *)
 
-(** A proof is a pair of a result, with its proof step.
-    Typically, a refutation will be a proof of false from axioms and the
-    negated goal.
-*)
+(** A proof is a pair of a result, with its proof step. Typically, a refutation will be a proof of false from
+    axioms and the negated goal. *)
 
 module S : sig
   type t = proof
@@ -266,8 +276,8 @@ module S : sig
   module Tbl : CCHashtbl.S with type key = t
 
   (** {2 Constructors and utils}
-      In all the following constructors, [theories] defaults to the empty list.
-      Axiom constructors have default role "axiom" *)
+      In all the following constructors, [theories] defaults to the empty list. Axiom constructors have default
+      role "axiom" *)
 
   val mk : step -> Result.t -> t
   (** Main constructor *)
