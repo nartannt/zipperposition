@@ -1,0 +1,32 @@
+name: build
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  run:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        #os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
+        ocaml-compiler:
+          - 4.08.x
+          - 4.13.x
+          - 5.1.x
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ocaml/setup-ocaml@v3
+      with:
+        ocaml-compiler: ${{ matrix.ocaml-compiler }}
+        dune-cache: true
+        allow-prerelease-opam: true
+    - run: opam pin -n .
+    - run: opam depext -yt zipperposition
+    - run: opam install -t . --deps-only
+    - run: opam exec -- dune build @install --profile=release
+    - run: opam exec -- dune runtest --profile=release
